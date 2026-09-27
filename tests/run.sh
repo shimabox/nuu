@@ -212,7 +212,7 @@ expect_guard() {
   if [[ "$got" == "$expected" ]]; then
     pass "$name"
   else
-    fail "$name（期待: $expected、結果: $got）"
+    fail "${name}（期待: ${expected}、結果: ${got}）"
   fi
 }
 
