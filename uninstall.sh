@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh で作ったリンクを外し、dashboard-builder を使えなくする。
+# install.sh で作ったリンクと、~/.claude/CLAUDE.md の読み込みの 1 行を外し、nuu のサブエージェントを使えなくする。
 # --purge を付けると、保存した好みのスタイル（エージェントのメモリ）、ダッシュボード、
 # vendor/impeccable も消す。リポジトリ自体は消さない。
 
@@ -7,6 +7,9 @@ set -euo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly REPO_DIR
+readonly CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
+readonly RULE_HEADING='## 長い作業の進捗ダッシュボード'
 
 purge=false
 case "${1:-}" in
@@ -49,6 +52,18 @@ unlink_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-g
 unlink_one "$REPO_DIR/hooks/dashboard-usage.py" "$HOME/.claude/hooks/dashboard-usage.py"
 unlink_one "$REPO_DIR/hooks/dashboard-validate.py" "$HOME/.claude/hooks/dashboard-validate.py"
 unlink_one "$REPO_DIR/vendor/impeccable/plugin/skills/impeccable" "$HOME/.claude/nuu/impeccable"
+unlink_one "$REPO_DIR/claude-instructions.md" "$HOME/.claude/nuu/claude-instructions.md"
+
+if [[ -f "$CLAUDE_MD" ]] && grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"; then
+  # 読み込みの 1 行だけを消す。シンボリックリンクでも実体へ書き戻す。
+  tmp="$(mktemp)"
+  grep -vxF "$IMPORT_LINE" "$CLAUDE_MD" >"$tmp" || true
+  cat "$tmp" >"$CLAUDE_MD"
+  rm -f "$tmp"
+  printf 'REMOVE %s の %s\n' "$CLAUDE_MD" "$IMPORT_LINE"
+else
+  printf 'OK     %s（読み込みの 1 行はありません）\n' "$CLAUDE_MD"
+fi
 
 if [[ "$purge" == true ]]; then
   remove_dir "$HOME/.claude/agent-memory/dashboard-builder"
@@ -57,13 +72,9 @@ if [[ "$purge" == true ]]; then
 fi
 rmdir "$HOME/.claude/nuu" 2>/dev/null || true
 
-cat <<'EOF'
-
-次のものは自動では消しません。不要なら手で消してください。
-- ~/.claude/CLAUDE.md の「長い作業の進捗ダッシュボード」の節
-  （dashboard-builder がなければ適用されない条件付きのルールです）
-EOF
-
+if [[ -f "$CLAUDE_MD" ]] && grep -qxF "$RULE_HEADING" "$CLAUDE_MD"; then
+  printf '\n%s に、ルールをコピーした「%s」の節が残っています。不要なら手で消してください。\n' "$CLAUDE_MD" "$RULE_HEADING"
+fi
 if [[ "$purge" != true ]]; then
-  echo '- ~/.claude/nuu/dashboards/ のダッシュボード（--purge を付けると消します）'
+  printf '\n~/.claude/nuu/dashboards/ のダッシュボードは残しています（--purge を付けると消します）。\n'
 fi

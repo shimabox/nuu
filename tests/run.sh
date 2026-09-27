@@ -69,7 +69,16 @@ chmod +x "$FAKE_BIN/git"
 
 # 結果を読みやすくするため、スクリプト自体の出力は捨てる。
 run_install() {
-  HOME="$TEST_HOME" FAKE_GIT_LOG="$GIT_LOG" PATH="$FAKE_BIN:$PATH" "$REPO/install.sh" >/dev/null 2>&1
+  HOME="$TEST_HOME" FAKE_GIT_LOG="$GIT_LOG" PATH="$FAKE_BIN:$PATH" "$REPO/install.sh" "$@" >/dev/null 2>&1
+}
+
+# 出力を確かめたいときに使う。標準出力と標準エラーをまとめて返す。
+install_output() {
+  HOME="$TEST_HOME" FAKE_GIT_LOG="$GIT_LOG" PATH="$FAKE_BIN:$PATH" "$REPO/install.sh" "$@" 2>&1 || true
+}
+
+uninstall_output() {
+  HOME="$TEST_HOME" "$REPO/uninstall.sh" 2>&1 || true
 }
 
 run_uninstall() {
@@ -85,6 +94,9 @@ readonly GUARD_LINK="$TEST_HOME/.claude/hooks/dashboard-guard.sh"
 readonly USAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-usage.py"
 readonly VALIDATE_LINK="$TEST_HOME/.claude/hooks/dashboard-validate.py"
 readonly UPDATER_LINK="$TEST_HOME/.claude/agents/dashboard-updater.md"
+readonly RULES_LINK="$TEST_HOME/.claude/nuu/claude-instructions.md"
+readonly CLAUDE_MD="$TEST_HOME/.claude/CLAUDE.md"
+readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
 readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
 readonly IMPECCABLE_DIR="$REPO/vendor/impeccable/plugin/skills/impeccable"
 readonly IMPECCABLE_LINK="$TEST_HOME/.claude/nuu/impeccable"
@@ -457,7 +469,10 @@ check 'impeccable は固定した版を使う' \
 check 'impeccable を ~/.claude/nuu/impeccable にリンクする' links_to "$IMPECCABLE_LINK" "$IMPECCABLE_DIR"
 check '2 回目も成功する' run_install
 check '2 回目は固定した版だけを取得する' grep -qxF -- "-C $REPO/vendor/impeccable fetch --quiet origin tag skill-v4.3.1" "$GIT_LOG"
-check 'CLAUDE.md には触れない' grep -qxF keep "$TEST_HOME/.claude/CLAUDE.md"
+check 'ルールのファイルをリポジトリへのリンクにする' links_to "$RULES_LINK" "$REPO/claude-instructions.md"
+check 'CLAUDE.md にルールを読み込む 1 行を足す' grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
+check 'CLAUDE.md のほかの内容は残す' grep -qxF keep "$CLAUDE_MD"
+check '2 回目は読み込みの 1 行を重ねて足さない' test "$(grep -cxF "$IMPORT_LINE" "$CLAUDE_MD")" -eq 1
 
 rm "$AGENT_LINK"
 printf 'mine\n' >"$AGENT_LINK"
@@ -481,7 +496,9 @@ check '好みのスタイルは残す' test -f "$MEMORY_DIR/style.md"
 check 'impeccable へのリンクを外す' test ! -e "$IMPECCABLE_LINK"
 check '空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check 'impeccable は残す' test -d "$REPO/vendor/impeccable"
-check 'CLAUDE.md には触れない' grep -qxF keep "$TEST_HOME/.claude/CLAUDE.md"
+check 'ルールのファイルのリンクを外す' test ! -e "$RULES_LINK"
+check 'CLAUDE.md の読み込みの 1 行を外す' fails grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
+check 'CLAUDE.md のほかの内容は残す（アンインストール）' grep -qxF keep "$CLAUDE_MD"
 check 'リンクがなくても成功する' run_uninstall
 
 run_install
@@ -508,6 +525,49 @@ run_uninstall --unknown
 status=$?
 set -e
 check '知らない引数は終了コード 2 で止まる' test "$status" -eq 2
+
+echo '== CLAUDE.md の読み込み =='
+
+rm -f "$AGENT_LINK"
+
+rm -f "$CLAUDE_MD"
+check 'CLAUDE.md がなくてもインストールが成功する' run_install
+check 'CLAUDE.md がなければ読み込みの 1 行だけで作る' test "$(cat "$CLAUDE_MD")" = "$IMPORT_LINE"
+run_uninstall
+
+mkdir -p "$TEST_ROOT/dotfiles"
+printf 'shared\n' >"$TEST_ROOT/dotfiles/instructions.md"
+rm -f "$CLAUDE_MD"
+ln -s "$TEST_ROOT/dotfiles/instructions.md" "$CLAUDE_MD"
+check 'CLAUDE.md がリンクでもインストールが成功する' run_install
+check 'CLAUDE.md のリンクを壊さない' links_to "$CLAUDE_MD" "$TEST_ROOT/dotfiles/instructions.md"
+check 'リンク先の実体に読み込みの 1 行を足す' grep -qxF "$IMPORT_LINE" "$TEST_ROOT/dotfiles/instructions.md"
+check 'CLAUDE.md がリンクでもアンインストールが成功する' run_uninstall
+check 'アンインストールでも CLAUDE.md のリンクを壊さない' links_to "$CLAUDE_MD" "$TEST_ROOT/dotfiles/instructions.md"
+check 'リンク先の実体から読み込みの 1 行を外す' fails grep -qxF "$IMPORT_LINE" "$TEST_ROOT/dotfiles/instructions.md"
+check 'リンク先の実体のほかの内容は残す' grep -qxF shared "$TEST_ROOT/dotfiles/instructions.md"
+
+rm -f "$CLAUDE_MD"
+printf 'keep\n\n## 長い作業の進捗ダッシュボード\n\n- 古いコピー\n' >"$CLAUDE_MD"
+output="$(install_output)"
+check 'ルールのコピーがあれば読み込みの 1 行を足さない' fails grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
+check 'ルールのコピーがあれば置き換えを案内する' grep -qF 'ルールのコピーがあります' <<<"$output"
+output="$(uninstall_output)"
+check 'アンインストールでもコピーの節が残っていれば案内する' grep -qF '節が残っています' <<<"$output"
+
+printf 'keep\n' >"$CLAUDE_MD"
+output="$(install_output --no-claude-md)"
+check '--no-claude-md なら CLAUDE.md に触れない' test "$(cat "$CLAUDE_MD")" = keep
+check '--no-claude-md なら足す 1 行を案内する' grep -qxF "       $IMPORT_LINE" <<<"$output"
+check '--no-claude-md でもルールのファイルはリンクする' links_to "$RULES_LINK" "$REPO/claude-instructions.md"
+run_uninstall
+
+set +e
+run_install --unknown
+status=$?
+set -e
+check 'インストールでも知らない引数は終了コード 2 で止まる' test "$status" -eq 2
+check '知らない引数では何もリンクしない' test ! -e "$AGENT_LINK"
 
 echo
 if ((failures > 0)); then
