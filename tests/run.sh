@@ -85,6 +85,7 @@ readonly GUARD_LINK="$TEST_HOME/.claude/hooks/dashboard-guard.sh"
 readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
 readonly IMPECCABLE_DIR="$REPO/vendor/impeccable/plugin/skills/impeccable"
 readonly IMPECCABLE_LINK="$TEST_HOME/.claude/nuu/impeccable"
+readonly DASH_DIR="$TEST_HOME/.claude/nuu/dashboards"
 
 echo '== エージェント定義 =='
 
@@ -114,7 +115,15 @@ check 'ガードはファイル操作と Bash にだけ掛ける（報告用の�
   has_line '    - matcher: "Read|Write|Edit|Bash"'
 check 'ガードは ~/.claude/hooks のリンクから呼ぶ' \
   has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-guard.sh\\\"\""
-check '出力先は .claude-progress/index.html' body_has '.claude-progress/index.html'
+check '作業ごとに ~/.claude/nuu/dashboards/ の下へ 1 ファイル作る' body_has '`~/.claude/nuu/dashboards/<プロジェクト名>/<開始日時>-<作業名>.html`'
+check 'ほかの作業のファイルは上書きしない' body_has 'ほかの作業のファイルは上書きしない'
+check 'update と finish は渡されたパスのファイルだけを更新する' body_has 'update と finish では、呼び出し元から渡されたパスのファイルだけを更新する'
+check 'パスがなければ既存のファイルを推測で選ばない' body_has 'パスが渡されていなければ、推測で既存のファイルを選ばず'
+check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
+check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
+check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
+check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
+check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
 check '10 秒ごとに自動で再読み込みする' body_has '<meta http-equiv="refresh" content="10">'
 check '時刻は date +%s で取得する' body_has 'date +%s'
 check '好みが未記録なら NEEDS_STYLE を返す' body_has 'NEEDS_STYLE'
@@ -149,17 +158,19 @@ check '1 ステップごとに更新する' rules_have '1 ステップ終える�
 check 'NEEDS_STYLE なら利用者に好みを聞く' rules_have 'NEEDS_STYLE` を返したら、AskUserQuestion で'
 check '利用者の答えは「利用者の答え」として渡す' rules_have '答えを「利用者の答え」として渡して呼び直す'
 check '聞けないときは好みを決めず「今回だけ」として渡す' rules_have '仮の好みを「今回だけ」として渡す'
+check '用意するときに作業ディレクトリを渡す' rules_have '用意するときは、作業ディレクトリ、'
+check 'ダッシュボードのパスを覚えて更新のたびに渡す' rules_have '作業ごとのダッシュボードのパスは覚えておき、以後の更新と完了のたびに'
 check '好みの変更を求められたら dashboard-builder に渡す' rules_have '好み（テーマ、密度、アクセントカラー）の変更を求めたら、新しい好みを「利用者の答え」として `dashboard-builder` に渡す'
 check '判断待ちでは止まらず既定の対応で続ける' rules_have '止まって待たずに'
 check '取り消せない操作は既定の対応で進めない' rules_have '取り消せない操作や外部に公開される操作'
 
 echo '== ガード =='
 
-mkdir -p "$(dirname "$GUARD_LINK")" "$(dirname "$IMPECCABLE_LINK")" "$IMPECCABLE_DIR/reference" "$WORK_DIR/.claude-progress"
+mkdir -p "$(dirname "$GUARD_LINK")" "$DASH_DIR/project" "$IMPECCABLE_DIR/reference"
 ln -s "$IMPECCABLE_DIR" "$IMPECCABLE_LINK"
 ln -s "$REPO/hooks/dashboard-guard.sh" "$GUARD_LINK"
 printf 'skill\n' >"$IMPECCABLE_DIR/SKILL.md"
-ln -s /etc/hosts "$WORK_DIR/.claude-progress/outside"
+ln -s /etc/hosts "$DASH_DIR/outside"
 
 guard_decision() {
   local tool="$1"
@@ -171,7 +182,7 @@ guard_decision() {
     | HOME="$TEST_HOME" "$GUARD_LINK")"; then
     echo error
   elif [[ -z "$output" ]]; then
-    echo allow
+    echo none
   else
     jq -r '.hookSpecificOutput.permissionDecision' <<<"$output"
   fi
@@ -198,29 +209,32 @@ command_input() {
   jq -n --arg command "$1" '{command: $command}'
 }
 
-expect_guard allow '.claude-progress/ に書ける' Write "$(file_input "$WORK_DIR/.claude-progress/index.html")"
-expect_guard allow '.claude-progress/ を相対パスで編集できる' Edit "$(file_input .claude-progress/index.html)"
+expect_guard allow 'ダッシュボードに書ける' Write "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.html")"
+expect_guard allow '一覧を ~ 付きのパスで編集できる' Edit "$(file_input '~/.claude/nuu/dashboards/index.html')"
+expect_guard allow 'ダッシュボードを読める' Read "$(file_input "$DASH_DIR/index.html")"
 expect_guard allow '自分のメモリを読める' Read "$(file_input "$MEMORY_DIR/MEMORY.md")"
 expect_guard allow '自分のメモリに ~ 付きのパスで書ける' Write "$(file_input '~/.claude/agent-memory/dashboard-builder/style.md')"
 expect_guard allow 'impeccable を読める' Read "$(file_input "$IMPECCABLE_DIR/SKILL.md")"
 expect_guard allow 'impeccable を ~/.claude/nuu/impeccable のリンク経由で読める' Read "$(file_input '~/.claude/nuu/impeccable/SKILL.md')"
 expect_guard deny 'impeccable にリンク経由でも書けない' Write "$(file_input "$IMPECCABLE_LINK/SKILL.md")"
 expect_guard deny 'impeccable には書けない' Write "$(file_input "$IMPECCABLE_DIR/SKILL.md")"
-expect_guard deny '作業ディレクトリのほかのファイルは読めない' Read "$(file_input "$WORK_DIR/README.md")"
-expect_guard deny '../ で .claude-progress/ の外に出られない' Read "$(file_input "$WORK_DIR/.claude-progress/../README.md")"
-expect_guard deny '.claude-progress/ 内のリンクで外に出られない' Read "$(file_input "$WORK_DIR/.claude-progress/outside")"
-expect_guard deny '名前が似たフォルダーには書けない' Write "$(file_input "$WORK_DIR/.claude-progress-x/index.html")"
+expect_guard deny '作業ディレクトリには書けない' Write "$(file_input "$WORK_DIR/.claude-progress/index.html")"
+expect_guard deny '作業ディレクトリのファイルは相対パスでも読めない' Read "$(file_input README.md)"
+expect_guard deny '../ でダッシュボードの外に出られない' Read "$(file_input "$DASH_DIR/../../settings.json")"
+expect_guard deny 'ダッシュボード内のリンクで外に出られない' Read "$(file_input "$DASH_DIR/outside")"
+expect_guard deny '名前が似たフォルダーには書けない' Write "$(file_input "$TEST_HOME/.claude/nuu/dashboards-x/index.html")"
 expect_guard deny 'ほかのエージェントのメモリは読めない' Read "$(file_input "$TEST_HOME/.claude/agent-memory/other/MEMORY.md")"
 expect_guard deny 'ホームのファイルは読めない' Read "$(file_input "$TEST_HOME/.ssh/id_rsa")"
 expect_guard deny 'パスがなければ拒否する' Read '{}'
 expect_guard allow 'date +%s を実行できる' Bash "$(command_input 'date +%s')"
 expect_guard allow 'date を実行できる' Bash "$(command_input date)"
+expect_guard allow 'ファイル名用の日時を取得できる' Bash "$(command_input 'date +%Y-%m-%d-%H%M')"
 expect_guard deny 'date 以外のコマンドは実行できない' Bash "$(command_input ls)"
 expect_guard deny 'date のあとに ; でつなげない' Bash "$(command_input 'date; rm -rf /tmp/x')"
 expect_guard deny 'date のあとに && でつなげない' Bash "$(command_input 'date && cat ~/.ssh/id_rsa')"
 expect_guard deny 'date にコマンド置換を渡せない' Bash "$(command_input 'date $(whoami)')"
-expect_guard deny 'date の出力をリダイレクトできない' Bash "$(command_input 'date > .claude-progress/x')"
-expect_guard allow '報告用の内部ツールは止めない' SubagentHandback '{"message": "done"}'
+expect_guard deny 'date の出力をリダイレクトできない' Bash "$(command_input 'date > ~/.claude/nuu/dashboards/x')"
+expect_guard none '報告用の内部ツールには口を出さない' SubagentHandback '{"message": "done"}'
 
 echo '== install.sh =='
 
@@ -265,7 +279,15 @@ check 'CLAUDE.md には触れない' grep -qxF keep "$TEST_HOME/.claude/CLAUDE.m
 check 'リンクがなくても成功する' run_uninstall
 
 run_install
+mkdir -p "$DASH_DIR/project"
+printf 'board\n' >"$DASH_DIR/project/task.html"
+check 'ダッシュボードがあってもアンインストールが成功する' run_uninstall
+check 'ダッシュボードは残す' test -f "$DASH_DIR/project/task.html"
+
+run_install
 check '--purge が成功する' run_uninstall --purge
+check '--purge でダッシュボードを消す' test ! -e "$DASH_DIR"
+check '--purge で空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check '--purge でリンクを外す' test ! -e "$AGENT_LINK"
 check '--purge で好みのスタイルを消す' test ! -e "$MEMORY_DIR"
 check '--purge で impeccable を消す' test ! -e "$REPO/vendor/impeccable"

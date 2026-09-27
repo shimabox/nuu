@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # install.sh で作ったリンクを外し、dashboard-builder を使えなくする。
-# --purge を付けると、保存した好みのスタイル（エージェントのメモリ）と vendor/impeccable も消す。
-# リポジトリ自体と、各作業ディレクトリの .claude-progress/ は消さない。
+# --purge を付けると、保存した好みのスタイル（エージェントのメモリ）、ダッシュボード、
+# vendor/impeccable も消す。リポジトリ自体は消さない。
 
 set -euo pipefail
 
@@ -46,18 +46,21 @@ remove_dir() {
 unlink_one "$REPO_DIR/agents/dashboard-builder.md" "$HOME/.claude/agents/dashboard-builder.md"
 unlink_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-guard.sh"
 unlink_one "$REPO_DIR/vendor/impeccable/plugin/skills/impeccable" "$HOME/.claude/nuu/impeccable"
-rmdir "$HOME/.claude/nuu" 2>/dev/null || true
 
 if [[ "$purge" == true ]]; then
   remove_dir "$HOME/.claude/agent-memory/dashboard-builder"
+  remove_dir "$HOME/.claude/nuu/dashboards"
   remove_dir "$REPO_DIR/vendor/impeccable"
 fi
+rmdir "$HOME/.claude/nuu" 2>/dev/null || true
 
 cat <<'EOF'
 
 次のものは自動では消しません。不要なら手で消してください。
 - ~/.claude/CLAUDE.md の「長い作業の進捗ダッシュボード」の節
   （dashboard-builder がなければ適用されない条件付きのルールです）
-- ~/.config/git/ignore の .claude-progress/ の行
-- 各作業ディレクトリの .claude-progress/
 EOF
+
+if [[ "$purge" != true ]]; then
+  echo '- ~/.claude/nuu/dashboards/ のダッシュボード（--purge を付けると消します）'
+fi
