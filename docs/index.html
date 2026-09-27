@@ -125,7 +125,7 @@ code, pre { font-family: var(--mono); font-size: 0.88em; }
 .shot img { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
 .shot figcaption { font-size: 13px; color: var(--muted); }
 .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 32px; list-style: none; margin: 0; padding: 0; }
-.features li { display: grid; gap: 2px; padding-block: 12px; border-top: 1px solid var(--line); }
+.features li { display: grid; align-content: start; gap: 2px; padding-block: 12px; border-top: 1px solid var(--line); }
 .features b { font-weight: 700; }
 .features span { color: var(--muted); font-size: 15px; }
 
@@ -224,7 +224,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     </div>
     <div class="shots">
       <figure class="shot">
-        <img src="images/dashboard-desktop.png" width="1280" height="1110" alt="作業ごとのダッシュボード。上部に状態、完了した手順、未回答の質問、止まっているもの、トークン量。その下に質問と止まっているもの、手順のカンバンが並ぶ">
+        <img src="images/dashboard-desktop.png" width="1280" height="1030" alt="作業ごとのダッシュボード。上部に状態、完了した手順、作業に合わせた数値、未回答の質問、止まっているもの、トークン量。その下に質問と止まっているもの、手順のカンバンが並ぶ">
         <figcaption>作業ごとのダッシュボード。架空の通販サイトの作業で作った見本です。</figcaption>
       </figure>
       <figure class="shot phone">
@@ -237,12 +237,17 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
       <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。</span></li>
+      <li><b>作業したセッションに戻る</b><span>セッションの ID と、<code>claude --resume</code> で再開するコマンドを載せます。コピーして、作業した会話に戻れます。</span></li>
       <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
       <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。HTML を開けばブラウザで見られ、10 秒ごとにデータだけを読み直します。ページごと再読み込みしないので、ちらつかず、スクロール位置もそのままです。パネルの構成を変えたときだけ、1 回読み直します。</span></li>
     </ul>
     <figure class="shot">
-      <img src="images/index-desktop.png" width="1280" height="330" alt="全プロジェクトの作業の一覧。作業名、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ">
+      <img src="images/index-desktop.png" width="1280" height="370" alt="全プロジェクトの作業の一覧。作業名、セッションの ID の先頭、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ">
       <figcaption>全プロジェクトの作業の一覧。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="images/dashboard-session.png" width="1280" height="360" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く">
+      <figcaption>ページの下部にあるセッションの欄。コマンドをコピーして、作業した会話に戻れます。</figcaption>
     </figure>
   </section>
 
@@ -371,7 +376,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <div class="part">
         <span class="who">フック</span>
         <h3>書き込みを、スクリプトで確かめる</h3>
-        <p>ガードが読み書きできる場所を絞り、書いた直後に JSON が正しいかを確かめます。トークン量は、Claude Code の会話の記録からスクリプトが集計します。</p>
+        <p>ガードが読み書きできる場所を絞り、書いた直後に JSON が正しいかを確かめます。トークン量は、Claude Code の会話の記録からスクリプトが集計します。セッションの ID と作業ディレクトリも、フックに渡された値をスクリプトが書きます。</p>
       </div>
     </div>
   </section>
