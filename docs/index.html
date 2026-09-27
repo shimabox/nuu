@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>nuu</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Claude Code で長い作業をするときに、進み具合を 1 枚の HTML で見られるようにするサブエージェント。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #F6F9F8;
+  --surface: #FFFFFF;
+  --sunk: #EEF3F2;
+  --ink: #15201F;
+  --ink-2: #33423F;
+  --muted: #5B6B69;
+  --line: #D9E3E1;
+  --accent: #0F8174;
+  --accent-soft: #E1F2EF;
+  --wait: #9A6310;
+  --done: #2E7D4F;
+  --stop: #B53A33;
+  --code-bg: #EEF3F2;
+  --shadow: 0 1px 2px rgba(21, 32, 31, 0.06);
+  --display: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --sans: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0C1517;
+    --surface: #111E20;
+    --sunk: #0F1A1C;
+    --ink: #E4EFED;
+    --ink-2: #C3D3D0;
+    --muted: #8FA6A3;
+    --line: #22373A;
+    --accent: #3CCFBC;
+    --accent-soft: #12302C;
+    --wait: #F2B84B;
+    --done: #86D295;
+    --stop: #F28080;
+    --code-bg: #0F1A1C;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0C1517;
+  --surface: #111E20;
+  --sunk: #0F1A1C;
+  --ink: #E4EFED;
+  --ink-2: #C3D3D0;
+  --muted: #8FA6A3;
+  --line: #22373A;
+  --accent: #3CCFBC;
+  --accent-soft: #12302C;
+  --wait: #F2B84B;
+  --done: #86D295;
+  --stop: #F28080;
+  --code-bg: #0F1A1C;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.8;
+  padding-inline: 20px;
+  padding-block: 0 80px;
+  font-variant-numeric: tabular-nums;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.35; margin: 0; letter-spacing: 0.01em; }
+h2 { font-size: clamp(1.45rem, 3.2vw, 1.9rem); font-weight: 900; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0; }
+code, pre { font-family: var(--mono); font-size: 0.88em; }
+:not(pre) > code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; overflow-wrap: anywhere; }
+
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 88px; }
+.prose { max-width: 66ch; color: var(--ink-2); display: grid; gap: 12px; }
+.section { display: grid; gap: 28px; }
+.section-head { display: grid; gap: 10px; }
+.kicker { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.04em; }
+
+/* ヘッダー */
+.top { display: flex; justify-content: space-between; align-items: center; padding-block: 20px; max-width: 1000px; margin: 0 auto; }
+.brand { font-family: var(--mono); font-weight: 500; font-size: 15px; color: var(--ink); text-decoration: none; }
+.top nav { display: flex; gap: 18px; font-size: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.top nav a { color: var(--muted); text-decoration: none; }
+.top nav a:hover { color: var(--ink); }
+
+/* ひとことで */
+.hero { display: grid; gap: 28px; padding-top: 32px; }
+.hero h1 { font-size: clamp(3.2rem, 11vw, 6rem); font-weight: 900; line-height: 1; letter-spacing: -0.01em; }
+.hero h1 span { color: var(--accent); }
+.hero .lead { font-size: clamp(1.1rem, 2.4vw, 1.3rem); color: var(--ink); max-width: 36em; line-height: 1.7; }
+.ask { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 15px; color: var(--muted); }
+.ask b { font-family: var(--display); font-size: 1.25rem; color: var(--ink); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 12px; color: var(--ink-2); }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 15px; }
+.btn.primary { background: var(--accent); color: var(--bg); }
+.btn.ghost { border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; max-width: 66ch; }
+
+/* 画面 */
+.shots { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.shot { margin: 0; display: grid; gap: 10px; }
+.shot img { border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.shot figcaption { font-size: 13px; color: var(--muted); }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 32px; list-style: none; margin: 0; padding: 0; }
+.features li { display: grid; gap: 2px; padding-block: 12px; border-top: 1px solid var(--line); }
+.features b { font-weight: 700; }
+.features span { color: var(--muted); font-size: 15px; }
+
+/* 仕組み */
+.diagram { margin: 0; display: grid; gap: 12px; }
+.diagram .canvas { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.diagram svg { width: 100%; min-width: 760px; height: auto; display: block; color: var(--ink); }
+.diagram figcaption { font-size: 14px; color: var(--muted); max-width: 66ch; }
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.part { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 8px; align-content: start; }
+.part .who { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.part p { color: var(--ink-2); font-size: 15px; }
+
+/* 流れ */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; }
+.flow li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: 26px; }
+.flow li:last-child { padding-bottom: 0; }
+.flow li::before { content: ""; position: absolute; left: 21px; top: 38px; bottom: 0; width: 2px; background: var(--line); }
+.flow li:last-child::before { display: none; }
+.flow .n { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-weight: 500; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--line); }
+.flow .body { display: grid; gap: 6px; padding-top: 8px; }
+.flow .body p { color: var(--ink-2); font-size: 15px; }
+.tag { justify-self: start; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 1px 8px; border: 1px solid currentColor; }
+.tag.wait { color: var(--wait); }
+.tag.go { color: var(--done); }
+.tag.stop { color: var(--stop); }
+
+/* 守り */
+.guards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 32px; }
+.guard { display: grid; gap: 6px; padding-block: 18px; border-top: 1px solid var(--line); }
+.guard p { color: var(--ink-2); font-size: 15px; }
+
+/* 料金 */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 13px; color: var(--muted); font-weight: 500; }
+tr:last-child td { border-bottom: 0; }
+td.num { white-space: nowrap; font-weight: 700; }
+
+/* はじめかた */
+.steps { display: grid; gap: 22px; counter-reset: s; }
+.step { display: grid; gap: 10px; }
+.step h3::before { counter-increment: s; content: counter(s) ". "; color: var(--accent); font-family: var(--mono); }
+.step p { color: var(--ink-2); font-size: 15px; max-width: 66ch; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; line-height: 1.6; }
+
+footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; font-size: 14px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .shots { grid-template-columns: minmax(0, 1fr); }
+  .shot.phone { max-width: 320px; }
+  .wrap { gap: 64px; }
+  .top nav { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <a class="brand" href="#">nuu</a>
+  <nav aria-label="ページ内">
+    <a href="#screens">画面</a>
+    <a href="#how">仕組み</a>
+    <a href="#flow">作業の流れ</a>
+    <a href="#cost">料金</a>
+    <a href="#start">はじめかた</a>
+    <a href="https://github.com/shimabox/nuu">GitHub</a>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section class="hero" aria-labelledby="h-top">
+    <h1 id="h-top">n<span>uu</span></h1>
+    <p class="lead">Claude Code に長い作業を任せている間、「今なにしてる？」に 1 枚の HTML で答えるサブエージェントです。</p>
+    <p class="ask"><b>ぬーやが？</b>沖縄の言葉で「なに？」。「ぬー」は「何」を意味します。</p>
+    <div class="chips" aria-label="特徴">
+      <span class="chip">作業ごとのダッシュボード</span>
+      <span class="chip">全プロジェクトの一覧</span>
+      <span class="chip">判断待ちでも止まらない</span>
+      <span class="chip">スマホの幅にも対応</span>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#start">はじめかた</a>
+      <a class="btn ghost" href="https://github.com/shimabox/nuu">GitHub で見る</a>
+    </div>
+    <p class="note">実験的なツールです。動作は macOS と Claude Code 2.1.283 で確認しています。Claude Code の更新で、動きが変わることがあります。</p>
+  </section>
+
+  <section class="section" id="screens" aria-labelledby="h-screens">
+    <div class="section-head">
+      <span class="kicker">画面</span>
+      <h2 id="h-screens">開けば、進み具合と待っていることがわかる</h2>
+    </div>
+    <div class="shots">
+      <figure class="shot">
+        <img src="images/dashboard-desktop.png" width="1280" height="1110" alt="作業ごとのダッシュボード。上部に状態、完了した手順、未回答の質問、止まっているもの、トークン量。その下に質問と止まっているもの、手順のカンバンが並ぶ">
+        <figcaption>作業ごとのダッシュボード。架空の通販サイトの作業で作った見本です。</figcaption>
+      </figure>
+      <figure class="shot phone">
+        <img src="images/dashboard-mobile.png" width="390" height="1000" alt="スマホの幅で表示したダッシュボード。要約、質問、止まっているもの、手順が縦に並ぶ">
+        <figcaption>スマホの幅では 1 列に並びます。</figcaption>
+      </figure>
+    </div>
+    <ul class="features">
+      <li><b>手順はカンバンで</b><span>未着手、進行中、待ち、停止、完了の列に並びます。頼めばリストにも変えられます。</span></li>
+      <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
+      <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
+      <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。</span></li>
+      <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
+      <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。1 ファイルの HTML なので、ファイルを開けばブラウザで見られ、10 秒ごとに自分で再読み込みします。</span></li>
+    </ul>
+    <figure class="shot">
+      <img src="images/index-desktop.png" width="1280" height="330" alt="全プロジェクトの作業の一覧。作業名、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ">
+      <figcaption>全プロジェクトの作業の一覧。</figcaption>
+    </figure>
+  </section>
+
+  <section class="section" id="how" aria-labelledby="h-how">
+    <div class="section-head">
+      <span class="kicker">仕組み</span>
+      <h2 id="h-how">作業する Claude と、ダッシュボードを書く係を分ける</h2>
+      <div class="prose">
+        <p>作業そのものは、いつもの Claude Code が進めます。ダッシュボードを書くのは、専用の 2 つのサブエージェントです。書き込みはすべてフックのスクリプトを通り、決まった場所にだけ書かれます。</p>
+      </div>
+    </div>
+
+    <figure class="diagram">
+      <div class="canvas">
+        <svg viewBox="0 0 1000 470" role="img" aria-label="利用者の依頼を受けた Claude Code が、用意を dashboard-builder に、途中の更新を dashboard-updater に頼む。どちらの書き込みもフックのガードと確認を通り、~/.claude/nuu/dashboards/ に保存され、ブラウザが 10 秒ごとに読み込む。トークン量は会話の記録から集計される。">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+            </marker>
+            <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#14B8A6"/>
+            </marker>
+          </defs>
+
+          <g font-family="IBM Plex Sans JP, Hiragino Sans, sans-serif" font-size="13" fill="currentColor">
+            <!-- 利用者 -->
+            <rect x="20" y="195" width="120" height="64" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="80" y="232" text-anchor="middle" font-weight="700">利用者</text>
+
+            <!-- Claude Code 本体 -->
+            <rect x="200" y="180" width="170" height="94" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="285" y="218" text-anchor="middle" font-weight="700">Claude Code</text>
+            <text x="285" y="240" text-anchor="middle" font-size="12" fill-opacity="0.7">作業を進める</text>
+            <text x="285" y="258" text-anchor="middle" font-size="12" fill-opacity="0.7">CLAUDE.md のルール</text>
+
+            <!-- builder -->
+            <rect x="440" y="60" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
+            <text x="545" y="92" text-anchor="middle" font-weight="700" font-family="IBM Plex Mono, monospace">dashboard-builder</text>
+            <text x="545" y="114" text-anchor="middle" font-size="12" fill-opacity="0.75">Opus 5.5・用意と構成の見直し</text>
+
+            <!-- updater -->
+            <rect x="440" y="300" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
+            <text x="545" y="332" text-anchor="middle" font-weight="700" font-family="IBM Plex Mono, monospace">dashboard-updater</text>
+            <text x="545" y="354" text-anchor="middle" font-size="12" fill-opacity="0.75">Haiku 4.5・途中の更新と完了</text>
+
+            <!-- 会話の記録 -->
+            <rect x="440" y="412" width="210" height="44" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="4 4"/>
+            <text x="545" y="439" text-anchor="middle" font-size="12">会話の記録 ~/.claude/projects</text>
+
+            <!-- フック -->
+            <rect x="700" y="40" width="130" height="360" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="5 5"/>
+            <text x="765" y="64" text-anchor="middle" font-size="12" fill-opacity="0.7">フック</text>
+            <rect x="712" y="82" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="110" text-anchor="middle" font-weight="700">ガード</text>
+            <text x="765" y="130" text-anchor="middle" font-size="11" fill-opacity="0.7">書く前に場所を確認</text>
+            <rect x="712" y="190" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="218" text-anchor="middle" font-weight="700">JSON の確認</text>
+            <text x="765" y="238" text-anchor="middle" font-size="11" fill-opacity="0.7">壊れたら直させる</text>
+            <rect x="712" y="298" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="326" text-anchor="middle" font-weight="700">トークン集計</text>
+            <text x="765" y="346" text-anchor="middle" font-size="11" fill-opacity="0.7">.usage.js に書く</text>
+
+            <!-- ダッシュボード -->
+            <rect x="870" y="150" width="112" height="120" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5"/>
+            <text x="926" y="186" text-anchor="middle" font-weight="700">ダッシュボード</text>
+            <text x="926" y="208" text-anchor="middle" font-size="11" fill-opacity="0.7">作業ごとの HTML</text>
+            <text x="926" y="226" text-anchor="middle" font-size="11" fill-opacity="0.7">全体の一覧</text>
+            <text x="926" y="252" text-anchor="middle" font-size="10" fill-opacity="0.6" font-family="IBM Plex Mono, monospace">~/.claude/nuu/</text>
+
+            <!-- ブラウザ -->
+            <rect x="870" y="330" width="112" height="64" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="926" y="358" text-anchor="middle" font-weight="700">ブラウザ</text>
+            <text x="926" y="378" text-anchor="middle" font-size="11" fill-opacity="0.7">10 秒ごとに読む</text>
+          </g>
+
+          <g font-family="IBM Plex Sans JP, Hiragino Sans, sans-serif" font-size="12" fill="currentColor" stroke-width="1.5">
+            <!-- 利用者 ↔ 本体 -->
+            <line x1="140" y1="227" x2="196" y2="227" stroke="currentColor" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+            <text x="168" y="216" text-anchor="middle">依頼・回答</text>
+
+            <!-- 本体 → builder -->
+            <polyline points="370,205 405,205 405,99 436,99" fill="none" stroke="#14B8A6" marker-end="url(#arrow-accent)"/>
+            <text x="398" y="150" text-anchor="end">用意</text>
+            <text x="398" y="166" text-anchor="end" fill-opacity="0.7">完了を待つ</text>
+
+            <!-- 本体 → updater -->
+            <polyline points="370,250 405,250 405,339 436,339" fill="none" stroke="#14B8A6" stroke-dasharray="6 4" marker-end="url(#arrow-accent)"/>
+            <text x="398" y="292" text-anchor="end">途中の更新</text>
+            <text x="398" y="308" text-anchor="end" fill-opacity="0.7">待たない</text>
+
+            <!-- updater → builder（構成の見直し） -->
+            <line x1="545" y1="298" x2="545" y2="142" stroke="currentColor" stroke-opacity="0.55" stroke-dasharray="3 4" marker-end="url(#arrow)"/>
+            <text x="556" y="226" fill-opacity="0.75">収まらない変化は回す</text>
+
+            <!-- builder / updater → フック -->
+            <line x1="650" y1="99" x2="708" y2="112" stroke="currentColor" marker-end="url(#arrow)"/>
+            <line x1="650" y1="339" x2="708" y2="226" stroke="currentColor" marker-end="url(#arrow)"/>
+            <text x="676" y="92" text-anchor="middle">書く</text>
+
+            <!-- 会話の記録 → 集計 -->
+            <line x1="650" y1="432" x2="708" y2="342" stroke="currentColor" stroke-opacity="0.55" marker-end="url(#arrow)"/>
+            <text x="684" y="408" text-anchor="middle" fill-opacity="0.75">読む</text>
+
+            <!-- フック → ダッシュボード -->
+            <line x1="830" y1="210" x2="866" y2="210" stroke="currentColor" marker-end="url(#arrow)"/>
+
+            <!-- ダッシュボード → ブラウザ -->
+            <line x1="926" y1="270" x2="926" y2="326" stroke="currentColor" marker-end="url(#arrow)"/>
+          </g>
+        </svg>
+      </div>
+      <figcaption>用意は完了を待ち、途中の更新は待たずに作業を続けます。どちらの書き込みも、フックのガードと JSON の確認を通って、決まった場所に保存されます。</figcaption>
+    </figure>
+
+    <div class="parts">
+      <div class="part">
+        <span class="who">dashboard-builder・Opus 5.5</span>
+        <h3>作業に合わせて、1 枚目を作る</h3>
+        <p>作業の性質を見て、載せるパネルと並びを決めます。テンプレートは使いません。初回だけ、好みのテーマ、密度、アクセントカラーを聞き、以降はその好みで作ります。</p>
+      </div>
+      <div class="part">
+        <span class="who">dashboard-updater・Haiku 4.5</span>
+        <h3>途中の更新は、軽く速く</h3>
+        <p>回数の多い途中の更新は、軽いモデルに任せます。ページの見た目には触れず、埋め込まれたデータだけを書き換えます。今の構成に収まらない変化は、builder に回します。</p>
+      </div>
+      <div class="part">
+        <span class="who">フック</span>
+        <h3>書き込みを、スクリプトで確かめる</h3>
+        <p>ガードが読み書きできる場所を絞り、書いた直後に JSON が正しいかを確かめます。トークン量は、Claude Code の会話の記録からスクリプトが集計します。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="flow" aria-labelledby="h-flow">
+    <div class="section-head">
+      <span class="kicker">作業の流れ</span>
+      <h2 id="h-flow">1 つの作業で起きること</h2>
+    </div>
+    <ol class="flow">
+      <li><span class="n">1</span><div class="body"><h3>長い作業を頼む</h3><p>5 ステップを超える作業や、30 分を超えそうな作業だと判断されると、作業の前にダッシュボードが用意されます。確実に使いたいときは「ダッシュボードを用意してから進めて」と頼みます。</p></div></li>
+      <li><span class="n">2</span><div class="body"><span class="tag wait">待つ・2〜3 分</span><h3>ダッシュボードを用意する</h3><p>builder が作業ごとの HTML を作り、全体の一覧に行を足します。Claude Code は、2 つのファイルの場所を伝えます。</p></div></li>
+      <li><span class="n">3</span><div class="body"><span class="tag go">待たない</span><h3>手順ごとに更新する</h3><p>手順を 1 つ終えるたびに、updater がバックグラウンドで更新します。作業は更新を待たずに進み、前の更新が終わっていなければ、次の変化とまとめて渡します。</p></div></li>
+      <li><span class="n">4</span><div class="body"><span class="tag go">止まらない</span><h3>判断が必要になったら</h3><p>質問と既定の対応をダッシュボードに載せ、既定の対応で作業を続けます。都合のよいときにダッシュボードで質問を確かめ、答えは Claude Code に伝えます。</p></div></li>
+      <li><span class="n">5</span><div class="body"><span class="tag stop">承認を待つ</span><h3>取り消せない操作は別</h3><p>削除、push、送信のような取り消せない操作や外部に公開される操作は、既定の対応では進めず、承認を待ちます。その間も、進められるほかの手順があれば続けます。</p></div></li>
+      <li><span class="n">6</span><div class="body"><span class="tag wait">待つ</span><h3>完了にして報告する</h3><p>作業が終わったら、ダッシュボードを完了にしてから報告します。一覧では、完了した作業の側に移ります。</p></div></li>
+    </ol>
+  </section>
+
+  <section class="section" id="safety" aria-labelledby="h-safety">
+    <div class="section-head">
+      <span class="kicker">守り</span>
+      <h2 id="h-safety">ダッシュボードを書く係は、ほかに何もできない</h2>
+    </div>
+    <div class="guards">
+      <div class="guard"><h3>読み書きできる場所を絞る</h3><p>ダッシュボードを書く 2 つのサブエージェントが読み書きできるのは、<code>~/.claude/nuu/dashboards/</code> と自身のメモリだけです。コマンドは、時刻を取る <code>date</code> だけを使えます。</p></div>
+      <div class="guard"><h3>作業ディレクトリには何も作らない</h3><p>ダッシュボードはホームの決まった場所にまとまるので、作業中のリポジトリに余計なファイルが増えません。</p></div>
+      <div class="guard"><h3>時刻は実際の時計から</h3><p>記録する時刻は、推測ではなく <code>date</code> で取った値です。更新が 15 分以上止まっていると、ダッシュボードと一覧が知らせます。</p></div>
+      <div class="guard"><h3>残る内容に注意</h3><p>ダッシュボードには、作業の概要や質問、成果物のパスがそのまま残ります。スマホなどから見るために外部へ公開するときは、その中身ごと見えることになります。公開の仕組みは、利用者が自分の環境で用意します。</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="cost" aria-labelledby="h-cost">
+    <div class="section-head">
+      <span class="kicker">料金</span>
+      <h2 id="h-cost">ダッシュボードにかかる料金の目安</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">場面</th><th scope="col">担当</th><th scope="col">1 回あたり</th><th scope="col">時間</th></tr></thead>
+        <tbody>
+          <tr><td>ダッシュボードの用意</td><td><code>dashboard-builder</code>（Opus 5.5）</td><td class="num">約 $0.50</td><td>2〜3 分</td></tr>
+          <tr><td>途中の更新と完了</td><td><code>dashboard-updater</code>（Haiku 4.5）</td><td class="num">約 $0.06</td><td>30 秒〜1 分</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>8 手順の作業で途中の更新が 8 回あれば、ダッシュボードにかかる料金は合わせて約 $1 です。途中の更新を Opus 5.5 で行うと、1 回あたり約 $0.27 かかりました。</p>
+      <p class="note">2026 年 9 月時点の API の単価で、見本の作業を計算した目安です。契約の形態によっては、料金ではなく使用量の上限に数えられます。トークン量は、会話の記録の都合でサブエージェントの出力が少なめに出ることがあります。</p>
+    </div>
+  </section>
+
+  <section class="section" id="start" aria-labelledby="h-start">
+    <div class="section-head">
+      <span class="kicker">はじめかた</span>
+      <h2 id="h-start">macOS か Linux で、Claude Code と一緒に</h2>
+      <div class="prose"><p>bash、git、jq、python3 が必要です。詳しい手順と、推奨するプラグイン、アンインストールの方法は README にまとめています。</p></div>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3>clone して、リンクを張る</h3>
+        <p><code>~/.claude</code> にサブエージェントとフックのリンクを作ります。既存のファイルがあれば、上書きせずに止まります。</p>
+        <pre><code>git clone https://github.com/shimabox/nuu.git
+cd nuu
+./install.sh</code></pre>
+      </div>
+      <div class="step">
+        <h3>ルールを CLAUDE.md に足す</h3>
+        <p>長い作業でダッシュボードを使うよう、Claude Code に伝えるルールです。</p>
+        <pre><code>cat claude-instructions.md &gt;&gt; ~/.claude/CLAUDE.md</code></pre>
+      </div>
+      <div class="step">
+        <h3>長い作業を頼んで、一覧を開く</h3>
+        <p>初回だけ好みを聞かれます。できたダッシュボードは、一覧からたどれます。</p>
+        <pre><code>open ~/.claude/nuu/dashboards/index.html</code></pre>
+      </div>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/shimabox/nuu#readme">README を読む</a>
+      <a class="btn ghost" href="https://github.com/shimabox/nuu/blob/master/docs/TODO.md">今後の検討</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <span>nuu は MIT License です。デザインの指針として読む impeccable は Apache License 2.0 です。</span>
+  <a href="https://github.com/shimabox/nuu">github.com/shimabox/nuu</a>
+</footer>
+
+</body>
+</html>
