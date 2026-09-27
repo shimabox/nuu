@@ -83,6 +83,8 @@ links_to() {
 readonly AGENT_LINK="$TEST_HOME/.claude/agents/dashboard-builder.md"
 readonly GUARD_LINK="$TEST_HOME/.claude/hooks/dashboard-guard.sh"
 readonly USAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-usage.py"
+readonly VALIDATE_LINK="$TEST_HOME/.claude/hooks/dashboard-validate.py"
+readonly UPDATER_LINK="$TEST_HOME/.claude/agents/dashboard-updater.md"
 readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
 readonly IMPECCABLE_DIR="$REPO/vendor/impeccable/plugin/skills/impeccable"
 readonly IMPECCABLE_LINK="$TEST_HOME/.claude/nuu/impeccable"
@@ -166,9 +168,44 @@ for section in 'タスクと状態' '利用者への質問' '最新の成果物'
 done
 check 'impeccable のランチャーは実行しない' body_has 'ランチャー（`scripts/impeccable`）は実行しない'
 check 'impeccable は clone した場所に関係なく ~/.claude/nuu/impeccable から読む' body_has '`~/.claude/nuu/impeccable/`'
-for file in agents/dashboard-builder.md hooks/dashboard-guard.sh install.sh uninstall.sh claude-instructions.md; do
+for file in agents/dashboard-builder.md agents/dashboard-updater.md hooks/dashboard-guard.sh hooks/dashboard-usage.py \
+  hooks/dashboard-validate.py install.sh uninstall.sh claude-instructions.md; do
   check "${file} に利用者固有のパスを書かない" fails grep -qE '/Users/|/home/|shimabox/github' "$REPO/$file"
 done
+
+echo '== 更新専用エージェントの定義 =='
+
+updater="$REPO/agents/dashboard-updater.md"
+updater_frontmatter="$(awk '/^---$/ { n++; next } n == 1' "$updater")"
+updater_body="$(awk '/^---$/ { n++; next } n >= 2' "$updater")"
+
+updater_line() {
+  grep -qxF -- "$1" <<<"$updater_frontmatter"
+}
+
+updater_says() {
+  grep -qF -- "$1" <<<"$updater_body"
+}
+
+check 'builder は途中の更新と完了を updater に任せる' has_line 'description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとの HTML と、全体の一覧）を用意する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前、好みのスタイルの変更、構成の見直しに使う。途中の更新と完了は dashboard-updater が行う。'
+check 'builder は表示に使うデータをすべて JSON に入れる' body_has '表示に使うデータはすべて `dashboard-data` の JSON に入れ、HTML に直接書かない'
+check 'builder も書いたあとに JSON を確かめる' has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
+check 'updater の名前は dashboard-updater' updater_line 'name: dashboard-updater'
+check 'updater のモデルは haiku' updater_line 'model: haiku'
+check 'updater は Write を使えない' updater_line 'tools: Read, Edit, Bash'
+check 'updater はデザインのスキルを読み込まない' fails grep -q '^skills:' <<<"$updater_frontmatter"
+check 'updater もガードを通す' updater_line '    - matcher: "Read|Write|Edit|Bash"'
+check 'updater は書いたあとに JSON を確かめる' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
+check 'updater の分もトークン量を集計する' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
+check 'updater は JSON のデータだけを書き換える' updater_says '`<script id="dashboard-data" type="application/json">` の中の JSON だけを Edit で書き換える'
+check 'updater は最初に 1 回ずつ読み、読み直さない' updater_says '最初に 1 回ずつ Read する。読み直さない'
+check 'updater は JSON の確認をフックに任せる' updater_says '書き換えたあとの JSON は、フックが確かめる'
+check 'updater は回答の内容と時刻を残す' updater_says '回答の内容 `answer` と回答した時刻 `answeredAt` を残す'
+check 'updater は一覧のこの作業の行だけを変える' updater_says 'この作業の行（`href` がこのダッシュボードを指す行）だけを更新する'
+check 'updater はパスがなければ推測しない' updater_says '何もせずに「パスが必要です」と返す'
+check 'updater は構成を変えずに builder へ回す' updater_says '何も変えずに「構成の見直しが必要です」と理由を添えて返す'
+check 'updater はトークン量のファイルに触れない' updater_says '`.usage.js` を作らない、編集しない'
+check 'updater は好みやメモリに触れない' updater_says '好みのスタイルやメモリに触れない'
 
 echo '== CLAUDE.md に追記するルール =='
 
@@ -186,6 +223,10 @@ check '利用者の答えは「利用者の答え」として渡す' rules_have 
 check '聞けないときは好みを決めず「今回だけ」として渡す' rules_have '仮の好みを「今回だけ」として渡す'
 check '用意するときに作業ディレクトリを渡す' rules_have '用意するときは、作業ディレクトリ、'
 check 'ダッシュボードのパスを覚えて更新のたびに渡す' rules_have '作業ごとのダッシュボードのパスは覚えておき、以後の更新と完了のたびに'
+check '途中の更新と完了は updater に任せる' rules_have '途中の更新と完了は、軽量な `dashboard-updater` に任せる'
+check '構成の見直しが必要なら builder に回す' rules_have '「構成の見直しが必要です」と返したら、同じパスと変化を `dashboard-builder` に渡して'
+check '質問の追加は updater で行う' rules_have '`dashboard-updater` 経由で質問一覧に追加し'
+check '完了の更新は updater で行う' rules_have '作業が終わったら、`dashboard-updater` で完了状態に更新し'
 check '途中の更新は待たずに次の手順へ進む' rules_have '途中の更新はバックグラウンドで呼び、完了を待たずに次の手順へ進む'
 check '用意は完了を待つ' rules_have '用意（setup）は返ってくるパスが必要なので、完了を待つ'
 check '同じダッシュボードを同時に更新させない' rules_have '同じダッシュボードを同時に更新させない'
@@ -341,6 +382,56 @@ check 'メモリを書いても成功する' run_usage Write "$MEMORY_DIR/style.
 check 'メモリのトークン量は作らない' test ! -e "$MEMORY_DIR/style.usage.js"
 check '壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$USAGE_LINK"
 
+log_line 2026-09-27T02:00:30.000Z update-1 4 6 0 0 >"$SESSION/subagents/agent-updater.jsonl"
+printf '{"agentType":"dashboard-updater"}\n' >"$SESSION/subagents/agent-updater.meta.json"
+check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.html"
+expect_usage 'updater の分もダッシュボードに数える' '.byCategory.dashboard.total' 10
+
+echo '== JSON の確認 =='
+
+ln -s "$REPO/hooks/dashboard-validate.py" "$VALIDATE_LINK"
+
+run_validate() {
+  jq -n --arg tool "${2:-Edit}" --arg path "$1" '{tool_name: $tool, tool_input: {file_path: $path}}' \
+    | HOME="$TEST_HOME" "$VALIDATE_LINK"
+}
+
+expect_validate() {
+  local got
+
+  got="$(run_validate "$3" "${4:-Edit}" | jq -r '.decision')"
+  [[ -n "$got" ]] || got=none
+  if [[ "$got" == "$1" ]]; then
+    pass "$2"
+  else
+    fail "${2}（期待: ${1}、結果: ${got}）"
+  fi
+}
+
+page() {
+  printf '<html><body><script id="dashboard-data" type="application/json">%s</script></body></html>\n' "$1"
+}
+
+mkdir -p "$DASH_DIR/no-items"
+page '{"title": "ok", "tasks": []}' >"$DASH_DIR/project/good.html"
+page '{"title": "broken", "tasks": [}' >"$DASH_DIR/project/broken.html"
+printf '<html><body>no data</body></html>\n' >"$DASH_DIR/project/nodata.html"
+page '{"items": []}' >"$DASH_DIR/index.html"
+page '{"rows": []}' >"$DASH_DIR/no-items/index.html"
+printf '<html><body>other page</body></html>\n' >"$WORK_DIR/other.html"
+printf 'not html\n' >"$DASH_DIR/project/note.txt"
+
+expect_validate none '正しい JSON なら何も言わない' "$DASH_DIR/project/good.html"
+expect_validate block '壊れた JSON なら直させる' "$DASH_DIR/project/broken.html"
+check '壊れた箇所を知らせる' grep -qF 'データの 1 行目' <<<"$(run_validate "$DASH_DIR/project/broken.html" | jq -r .reason)"
+expect_validate block 'ダッシュボードのデータが消えていれば直させる' "$DASH_DIR/project/nodata.html"
+expect_validate none '一覧に items があれば何も言わない' "$DASH_DIR/index.html"
+expect_validate block '一覧に items がなければ直させる' "$DASH_DIR/no-items/index.html"
+expect_validate none 'ダッシュボード以外の HTML は確かめない' "$WORK_DIR/other.html"
+expect_validate none 'HTML 以外は確かめない' "$DASH_DIR/project/note.txt"
+expect_validate none 'Write と Edit 以外は確かめない' "$DASH_DIR/project/broken.html" Read
+check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$VALIDATE_LINK"
+
 echo '== install.sh =='
 
 rm -rf "$TEST_HOME/.claude" "$REPO/vendor"
@@ -351,6 +442,8 @@ check 'インストールが成功する' run_install
 check 'エージェント定義をリポジトリへのリンクにする' links_to "$AGENT_LINK" "$REPO/agents/dashboard-builder.md"
 check 'ガードをリポジトリへのリンクにする' links_to "$GUARD_LINK" "$REPO/hooks/dashboard-guard.sh"
 check '集計スクリプトをリポジトリへのリンクにする' links_to "$USAGE_LINK" "$REPO/hooks/dashboard-usage.py"
+check 'JSON の確認スクリプトをリポジトリへのリンクにする' links_to "$VALIDATE_LINK" "$REPO/hooks/dashboard-validate.py"
+check '更新専用エージェントをリポジトリへのリンクにする' links_to "$UPDATER_LINK" "$REPO/agents/dashboard-updater.md"
 check 'impeccable を sparse clone で取得する' \
   grep -qxF "clone --quiet --filter=blob:none --sparse --no-checkout https://github.com/pbakaus/impeccable.git $REPO/vendor/impeccable" "$GIT_LOG"
 check 'impeccable はスキル部分だけを取り出す' \
@@ -378,6 +471,8 @@ check 'アンインストールが成功する' run_uninstall
 check 'エージェント定義のリンクを外す' test ! -e "$AGENT_LINK"
 check 'ガードのリンクを外す' test ! -e "$GUARD_LINK"
 check '集計スクリプトのリンクを外す' test ! -e "$USAGE_LINK"
+check 'JSON の確認スクリプトのリンクを外す' test ! -e "$VALIDATE_LINK"
+check '更新専用エージェントのリンクを外す' test ! -e "$UPDATER_LINK"
 check '好みのスタイルは残す' test -f "$MEMORY_DIR/style.md"
 check 'impeccable へのリンクを外す' test ! -e "$IMPECCABLE_LINK"
 check '空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"

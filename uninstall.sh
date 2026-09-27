@@ -44,8 +44,10 @@ remove_dir() {
 }
 
 unlink_one "$REPO_DIR/agents/dashboard-builder.md" "$HOME/.claude/agents/dashboard-builder.md"
+unlink_one "$REPO_DIR/agents/dashboard-updater.md" "$HOME/.claude/agents/dashboard-updater.md"
 unlink_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-guard.sh"
 unlink_one "$REPO_DIR/hooks/dashboard-usage.py" "$HOME/.claude/hooks/dashboard-usage.py"
+unlink_one "$REPO_DIR/hooks/dashboard-validate.py" "$HOME/.claude/hooks/dashboard-validate.py"
 unlink_one "$REPO_DIR/vendor/impeccable/plugin/skills/impeccable" "$HOME/.claude/nuu/impeccable"
 
 if [[ "$purge" == true ]]; then
