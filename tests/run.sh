@@ -166,6 +166,13 @@ check '作業全体の状態は進行中、中断中、完了の 3 つで持つ'
 check '作業全体の状態は色と文字の両方で見分けられるようにする' body_has '3 つを色と文字の両方で見分けられるように表示し'
 check '知らない状態は進行中として扱う' body_has '知らない値は進行中として扱う'
 check '作業ごとのページでも中断中と完了には止まった警告を出さない' body_has '作業が進行中で、15 分以上更新がなければ目立つ警告を出す。中断中と完了のときは出さない'
+check 'ダッシュボードと一覧に favicon を入れる' body_has '`<head>` に、次の favicon の 1 行を一字も変えずに入れる'
+check 'favicon は説明ページのロゴと同じ' python3 - "$ROOT/agents/dashboard-builder.md" "$ROOT/docs/favicon.svg" <<'PY'
+import re, sys, urllib.parse
+spec, logo = (open(path, encoding="utf-8").read() for path in sys.argv[1:])
+found = re.search(r'<link rel="icon" href="data:image/svg\+xml,([^"]+)">', spec)
+sys.exit(0 if found and urllib.parse.unquote(found.group(1)) == logo.strip().replace('"', "'") else 1)
+PY
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
 check 'データは HTML と同じフォルダーのデータファイルに置く' body_has '`<HTML のファイル名から .html を除いたもの>.data.js` に置く'
