@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""dashboard-builder が作業ごとのダッシュボードを書いた直後に、その作業のトークン量を集計する。
+"""dashboard-builder か dashboard-updater が作業ごとのダッシュボードを書いた直後に、その作業のトークン量を集計する。
 
 会話の記録（Claude 本体とサブエージェント）から、ダッシュボードを用意し始めた時刻以降の
 トークン量を合計し、ダッシュボードの隣の <作業>.usage.js に書く。ダッシュボードの HTML は
-dashboard-builder が編集中のため、このスクリプトは書き換えない。
-集計に失敗しても dashboard-builder の作業は止めない。
+エージェントが編集中のため、このスクリプトは書き換えない。
+集計に失敗してもエージェントの作業は止めない。
 """
 
 import json
@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 
 DASHBOARDS = os.path.realpath(os.path.expanduser("~/.claude/nuu/dashboards"))
+DASHBOARD_AGENTS = ("dashboard-builder", "dashboard-updater")
 TOKEN_KEYS = {
     "input": "input_tokens",
     "output": "output_tokens",
@@ -130,7 +131,7 @@ def main():
             if not name.endswith(".jsonl"):
                 continue
             path = os.path.join(subagents_dir, name)
-            bucket = "dashboard" if agent_type(path) == "dashboard-builder" else "subagents"
+            bucket = "dashboard" if agent_type(path) in DASHBOARD_AGENTS else "subagents"
             add_usage(categories[bucket], by_model, seen, path, since)
 
     totals = empty()
@@ -160,6 +161,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as error:  # 集計の失敗で dashboard-builder を止めない。
+    except Exception as error:  # 集計の失敗でエージェントを止めない。
         print(f"dashboard-usage: {error}", file=sys.stderr)
     sys.exit(0)

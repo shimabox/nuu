@@ -31,8 +31,10 @@ link_one() {
 }
 
 link_one "$REPO_DIR/agents/dashboard-builder.md" "$HOME/.claude/agents/dashboard-builder.md"
+link_one "$REPO_DIR/agents/dashboard-updater.md" "$HOME/.claude/agents/dashboard-updater.md"
 link_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-guard.sh"
 link_one "$REPO_DIR/hooks/dashboard-usage.py" "$HOME/.claude/hooks/dashboard-usage.py"
+link_one "$REPO_DIR/hooks/dashboard-validate.py" "$HOME/.claude/hooks/dashboard-validate.py"
 
 if [[ -d "$IMPECCABLE_DIR/.git" ]]; then
   git -C "$IMPECCABLE_DIR" fetch --quiet origin tag "$IMPECCABLE_REF"

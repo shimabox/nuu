@@ -1,6 +1,6 @@
 ---
 name: dashboard-builder
-description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとの HTML と、全体の一覧）を作成・更新する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前と、各ステップの完了後に使う。タスクと状態、利用者への質問と既定の対応、成果物、止まっているものを渡す。
+description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとの HTML と、全体の一覧）を用意する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前、好みのスタイルの変更、構成の見直しに使う。途中の更新と完了は dashboard-updater が行う。
 tools: Read, Write, Edit, Bash
 model: opus
 effort: medium
@@ -19,6 +19,9 @@ hooks:
   PostToolUse:
     - matcher: "Write|Edit"
       hooks:
+        - type: command
+          command: "\"$HOME/.claude/hooks/dashboard-validate.py\""
+          timeout: 10
         - type: command
           command: "\"$HOME/.claude/hooks/dashboard-usage.py\""
           timeout: 30
@@ -164,8 +167,9 @@ hooks:
 # 呼び出しの種類
 
 - setup: 作業ディレクトリ、作業の概要、手順の一覧を受け取り、パネル構成を決めて新しいファイルを作る
-- update: ダッシュボードのパスと変化した内容を受け取り、既存のデータに反映する
-- finish: ダッシュボードのパスを受け取り、全体を完了状態にし、最終的な成果物の一覧を整える
+- 構成の見直し: dashboard-updater が「構成の見直しが必要です」と返したときに、ダッシュボードのパスと変化した内容を受け取り、パネル構成を直してデータを反映する
+- update と finish: 通常は dashboard-updater が行う。呼ばれたときは、ダッシュボードのパスと変化した内容を受け取り、既存のデータに反映する
+- 途中の更新と完了を dashboard-updater が続けられるよう、表示に使うデータはすべて `dashboard-data` の JSON に入れ、HTML に直接書かない
 
 # 返答
 

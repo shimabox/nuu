@@ -1,6 +1,6 @@
 # nuu
 
-Claude Code で長い作業をするときに、進み具合を 1 枚の HTML で見られるようにするサブエージェント `dashboard-builder` です。
+Claude Code で長い作業をするときに、進み具合を 1 枚の HTML で見られるようにするサブエージェントです。ダッシュボードを用意する `dashboard-builder` と、途中の更新と完了を行う `dashboard-updater` の 2 つで動きます。
 
 ## 名前の由来
 
@@ -52,7 +52,9 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
    次のリンクを作ります。既存のファイルがある場合は上書きせずに止まります。
 
    - `~/.claude/agents/dashboard-builder.md`
+   - `~/.claude/agents/dashboard-updater.md`
    - `~/.claude/hooks/dashboard-guard.sh`
+   - `~/.claude/hooks/dashboard-validate.py`
    - `~/.claude/hooks/dashboard-usage.py`
    - `~/.claude/nuu/impeccable`
 
@@ -85,6 +87,15 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 open ~/.claude/nuu/dashboards/index.html
 ```
 
+### エージェントの分担
+
+| エージェント | モデル | 受け持つこと |
+|---|---|---|
+| `dashboard-builder` | opus | ダッシュボードの用意、好みのスタイルの変更、構成の見直し |
+| `dashboard-updater` | haiku | 途中の更新と完了。ページの見た目や構成は変えず、埋め込まれたデータ（`dashboard-data` の JSON）だけを書き換える |
+
+途中の更新は回数が多いので、軽いモデルに任せて料金を抑えます。同じ 3 回の更新で比べたところ、1 回あたりの料金の目安は opus の約 5 分の 1 でした。`dashboard-updater` は書き換えたあとに読み直さず、JSON が正しいかはフックのスクリプトが確かめます。今の構成に収まらない変化は `dashboard-builder` に回します。
+
 ### トークン量
 
 作業ごとのダッシュボードと一覧に、作業で使ったトークン量を表示します。`dashboard-builder` がダッシュボードを書くたびに、フックのスクリプトが Claude Code の会話の記録（`~/.claude/projects/`）から集計します。数えるのは、ダッシュボードを用意し始めてからの分です。
@@ -108,7 +119,9 @@ rm ~/.claude/agent-memory/dashboard-builder/style.md
 
 ## 構成
 
-- `agents/dashboard-builder.md`: サブエージェントの定義
+- `agents/dashboard-builder.md`: ダッシュボードを用意するサブエージェントの定義
+- `agents/dashboard-updater.md`: 途中の更新と完了を行うサブエージェントの定義
+- `hooks/dashboard-validate.py`: ダッシュボードを書いた直後に、埋め込んだデータが JSON として正しいかを確かめるスクリプト
 - `hooks/dashboard-usage.py`: 作業のトークン量を会話の記録から集計し、ダッシュボードの隣の `.usage.js` に書くスクリプト
 - `hooks/dashboard-guard.sh`: 読み書きできる場所を `~/.claude/nuu/dashboards/` と自身のメモリに限り、Bash を `date` だけに限るガード
 - `claude-instructions.md`: `~/.claude/CLAUDE.md` に追記するルール
