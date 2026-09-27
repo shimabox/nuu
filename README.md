@@ -153,6 +153,10 @@ tests/run.sh
 
 GitHub Actions では、push と pull request のたびに shellcheck と、ubuntu と macOS でのテストを実行します。
 
+## TODO
+
+[docs/TODO.md](docs/TODO.md)
+
 ## ライセンス
 
 MIT License です。詳しくは [LICENSE](LICENSE) を見てください。
