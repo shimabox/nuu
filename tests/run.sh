@@ -154,7 +154,22 @@ check '一覧ではこの作業の行だけを変える' body_has 'この作業�
 check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
-check '10 秒ごとに自動で再読み込みする' body_has '<meta http-equiv="refresh" content="10">'
+check 'データは HTML と同じフォルダーのデータファイルに置く' body_has '`<HTML のファイル名から .html を除いたもの>.data.js` に置く'
+check '一覧のデータも別のファイルに置く' body_has '`~/.claude/nuu/dashboards/index.data.js` に置く'
+check 'データファイルは決まった呼び出しの間に JSON だけを書く' body_has '1 行目を `window.nuuDashboardData(`、最終行を `);` にし、その間に JSON だけを書く'
+check '定期的なページの再読み込みはしない' body_has '定期的なページの再読み込みはしない。`<meta http-equiv="refresh">` は使わない'
+check '10 秒ごとにデータファイルだけを読み直す' body_has 'その後は 10 秒ごとに、データファイルを読む script 要素を作って'
+check 'file:// でも読めるよう fetch を使わない' body_has '`fetch` や XMLHttpRequest は使わない'
+check '1 回読めなかっただけでは警告を出さない' body_has '1 回読めなかっただけでは警告を出さない。3 回続けて読めなかったときだけ警告を出し、読めたら消す'
+check '警告の文に「隣の」のような位置の言い方を使わない' body_has '「隣の」のような位置の言い方は使わず'
+check '同じデータなら描き直さない' body_has '前回と同じデータ（`JSON.stringify` の結果が同じ）なら描き直さない'
+check 'データに構成の版を持たせる' body_has 'データの一番上に、構成の版 `"layout": <UNIX 秒>` を置く'
+check 'HTML を書き終えてからデータファイルを書く' body_has 'HTML を書き終えてから、この値を入れたデータファイルを書く'
+check '構成が変わったときだけページを読み直す' body_has '読み直したデータの `layout` がそれと違えば、構成が変わったので `location.reload()` で 1 回だけ読み直す'
+check '構成の変化で読み直すときもスクロール位置を保つ' body_has '再読み込みの前にスクロール位置を sessionStorage に保存し、読み込んだあとに戻す'
+check 'トークン量も 10 秒ごとに読み直す' body_has '`<作業名>.usage.js` をデータファイルと同じ方法で、開いたときと 10 秒ごとに読み直し'
+check '開いたときは script 要素の src でデータファイルを読む' body_has '`<script src="<データファイル名>"></script>` を置いて読む'
+check 'ページの再読み込みの指定を書かない' fails body_has '<meta http-equiv="refresh" content="10">'
 check '時刻は date +%s で取得する' body_has 'date +%s'
 check '好みが未記録なら NEEDS_STYLE を返す' body_has 'NEEDS_STYLE'
 check '初回に聞く好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
@@ -204,7 +219,7 @@ updater_says() {
 }
 
 check 'builder は途中の更新と完了を updater に任せる' has_line 'description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとの HTML と、全体の一覧）を用意する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前、好みのスタイルの変更、構成の見直しに使う。途中の更新と完了は dashboard-updater が行う。'
-check 'builder は表示に使うデータをすべて JSON に入れる' body_has '表示に使うデータはすべて `dashboard-data` の JSON に入れ、HTML に直接書かない'
+check 'builder は表示に使うデータをすべて JSON に入れる' body_has '表示に使うデータはすべてデータファイル（`.data.js`）の JSON に入れ、HTML に直接書かない'
 check 'builder も書いたあとに JSON を確かめる' has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
 check 'updater の名前は dashboard-updater' updater_line 'name: dashboard-updater'
 check 'updater のモデルは haiku' updater_line 'model: haiku'
@@ -213,7 +228,10 @@ check 'updater はデザインのスキルを読み込まない' fails grep -q '
 check 'updater もガードを通す' updater_line '    - matcher: "Read|Write|Edit|Bash"'
 check 'updater は書いたあとに JSON を確かめる' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
 check 'updater の分もトークン量を集計する' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
-check 'updater は JSON のデータだけを書き換える' updater_says '`<script id="dashboard-data" type="application/json">` の中の JSON だけを Edit で書き換える'
+check 'updater はデータファイルの JSON だけを書き換える' updater_says 'データファイルの `window.nuuDashboardData(` と `);` の間にある JSON だけを Edit で書き換える'
+check 'updater は HTML を読まない' updater_says 'HTML は読まない'
+check 'updater は構成の版を変えない' updater_says '構成の版 `layout` は変えない'
+check 'updater は一覧のデータファイルを更新する' updater_says '全体の一覧のデータ（`~/.claude/nuu/dashboards/index.data.js`）のうち'
 check 'updater は最初に 1 回ずつ読み、読み直さない' updater_says '最初に 1 回ずつ Read する。読み直さない'
 check 'updater は JSON の確認をフックに任せる' updater_says '書き換えたあとの JSON は、フックが確かめる'
 check 'updater は回答の内容と時刻を残す' updater_says '回答の内容 `answer` と回答した時刻 `answeredAt` を残す'
@@ -375,7 +393,7 @@ expect_usage() {
 }
 
 check '作業ごとのダッシュボードを書いたら集計が成功する' run_usage Write "$DASH_DIR/project/task.html"
-check '集計結果をダッシュボードの隣に書く' test -f "$DASH_DIR/project/task.usage.js"
+check '集計結果をダッシュボードと同じフォルダーに書く' test -f "$DASH_DIR/project/task.usage.js"
 check '作業ごとのキーで書く' grep -qF '["project/task"]' "$DASH_DIR/project/task.usage.js"
 expect_usage '用意を始めた時刻から数える' '.since | todate' 2026-09-27T02:00:00Z
 expect_usage '同じ応答は最大値で 1 回だけ数える' '.byCategory.main.total' 1160
@@ -403,6 +421,13 @@ printf '{"agentType":"dashboard-updater"}\n' >"$SESSION/subagents/agent-updater.
 check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.html"
 expect_usage 'updater の分もダッシュボードに数える' '.byCategory.dashboard.total' 10
 
+log_line 2026-09-27T02:00:40.000Z update-2 1 1 0 0 >>"$SESSION/subagents/agent-updater.jsonl"
+check 'データファイルの書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
+expect_usage 'データファイルの書き込みでも同じ作業に数える' '.byCategory.dashboard.total' 12
+check 'データファイル用に別のトークン量は作らない' test ! -e "$DASH_DIR/project/task.data.usage.js"
+check '一覧のデータファイルを書いても成功する' run_usage Edit "$DASH_DIR/index.data.js"
+check '一覧のデータファイルではトークン量を作らない' test ! -e "$DASH_DIR/index.usage.js"
+
 echo '== JSON の確認 =='
 
 ln -s "$REPO/hooks/dashboard-validate.py" "$VALIDATE_LINK"
@@ -424,28 +449,47 @@ expect_validate() {
   fi
 }
 
-page() {
-  printf '<html><body><script id="dashboard-data" type="application/json">%s</script></body></html>\n' "$1"
-}
-
 mkdir -p "$DASH_DIR/no-items"
-page '{"title": "ok", "tasks": []}' >"$DASH_DIR/project/good.html"
-page '{"title": "broken", "tasks": [}' >"$DASH_DIR/project/broken.html"
-printf '<html><body>no data</body></html>\n' >"$DASH_DIR/project/nodata.html"
-page '{"items": []}' >"$DASH_DIR/index.html"
-page '{"rows": []}' >"$DASH_DIR/no-items/index.html"
 printf '<html><body>other page</body></html>\n' >"$WORK_DIR/other.html"
 printf 'not html\n' >"$DASH_DIR/project/note.txt"
 
-expect_validate none '正しい JSON なら何も言わない' "$DASH_DIR/project/good.html"
-expect_validate block '壊れた JSON なら直させる' "$DASH_DIR/project/broken.html"
-check '壊れた箇所を知らせる' grep -qF 'データの 1 行目' <<<"$(run_validate "$DASH_DIR/project/broken.html" | jq -r .reason)"
-expect_validate block 'ダッシュボードのデータが消えていれば直させる' "$DASH_DIR/project/nodata.html"
-expect_validate none '一覧に items があれば何も言わない' "$DASH_DIR/index.html"
-expect_validate block '一覧に items がなければ直させる' "$DASH_DIR/no-items/index.html"
+data_file() {
+  printf 'window.nuuDashboardData(\n%s\n);\n' "$1"
+}
+
+data_file '{"title": "ok", "tasks": []}' >"$DASH_DIR/project/fresh.data.js"
+data_file '{"title": "broken", "tasks": [}' >"$DASH_DIR/project/broken.data.js"
+printf '{"title": "bare"}\n' >"$DASH_DIR/project/bare.data.js"
+printf '\nwindow.nuuDashboardData(\n{"title": "lead"}\n);\n' >"$DASH_DIR/project/lead.data.js"
+printf 'window.nuuDashboardData(\n{"title": "trail"}\n);\n\n' >"$DASH_DIR/project/trail.data.js"
+data_file '{"items": []}' >"$DASH_DIR/index.data.js"
+data_file '{"rows": []}' >"$DASH_DIR/no-items/index.data.js"
+data_file '{"title": "broken", "tasks": [}' >"$WORK_DIR/other.data.js"
+printf '<html><head><script src="fresh.data.js"></script></head></html>\n' >"$DASH_DIR/project/fresh.html"
+printf '<html><body><p>fresh.data.js が、この HTML と同じフォルダーにあるか確かめてください</p><script>load("fresh.data.js")</script></body></html>\n' >"$DASH_DIR/project/fresh-text-only.html"
+printf '<html><head><script src="fresh.data.js"></script></head></html>\n' >"$DASH_DIR/project/other-name.html"
+printf '<html><head><script data-src="fresh-data-src.data.js"></script></head></html>\n' >"$DASH_DIR/project/fresh-data-src.html"
+printf '<html><head><script src="index.data.js" onerror="warn()"></script></head></html>\n' >"$DASH_DIR/index.html"
+printf 'window.nuuDashboardData(\n{\n\n);\n' >"$DASH_DIR/project/trailing-blank.data.js"
+
 expect_validate none 'ダッシュボード以外の HTML は確かめない' "$WORK_DIR/other.html"
 expect_validate none 'HTML 以外は確かめない' "$DASH_DIR/project/note.txt"
-expect_validate none 'Write と Edit 以外は確かめない' "$DASH_DIR/project/broken.html" Read
+expect_validate none 'Write と Edit 以外は確かめない' "$DASH_DIR/project/broken.data.js" Read
+expect_validate none 'データファイルの JSON が正しければ何も言わない' "$DASH_DIR/project/fresh.data.js" Write
+expect_validate block 'データファイルの JSON が壊れていれば直させる' "$DASH_DIR/project/broken.data.js"
+check 'データファイルの壊れた箇所を知らせる' grep -qF 'データの 1 行目' <<<"$(run_validate "$DASH_DIR/project/broken.data.js" | jq -r .reason)"
+expect_validate block 'データファイルの呼び出しが崩れていれば直させる' "$DASH_DIR/project/bare.data.js"
+expect_validate block '1 行目の前に空行があれば直させる' "$DASH_DIR/project/lead.data.js"
+expect_validate block '最終行の後に空行があれば直させる' "$DASH_DIR/project/trail.data.js"
+expect_validate none '一覧のデータファイルに items があれば何も言わない' "$DASH_DIR/index.data.js"
+expect_validate block '一覧のデータファイルに items がなければ直させる' "$DASH_DIR/no-items/index.data.js"
+expect_validate none 'ダッシュボード以外のデータファイルは確かめない' "$WORK_DIR/other.data.js"
+expect_validate none '同じフォルダーのデータファイルを読み込む HTML なら何も言わない' "$DASH_DIR/project/fresh.html"
+expect_validate block 'ファイル名が文にあるだけで script 要素で読み込まない HTML なら直させる' "$DASH_DIR/project/fresh-text-only.html"
+expect_validate block 'ほかの名前のデータファイルを読み込む HTML なら直させる' "$DASH_DIR/project/other-name.html"
+expect_validate block 'src ではなく data-src に書いた HTML なら直させる' "$DASH_DIR/project/fresh-data-src.html"
+expect_validate none '一覧のデータファイルを読み込む一覧なら何も言わない' "$DASH_DIR/index.html"
+expect_validate block 'エラーの行が末尾の空行を指しても直させる' "$DASH_DIR/project/trailing-blank.data.js"
 check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$VALIDATE_LINK"
 
 echo '== install.sh =='
