@@ -18,6 +18,7 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 - 初回に好みのスタイル（テーマ、密度、アクセントカラー）を聞き、以降はその好みで作る
 - タスクはカンバン（状態ごとの列）で表示する。頼めばリストにも変えられる
 - スマホの幅でも読めるように表示する。狭い画面では、カンバンの列を縦に積む
+- 作業で使ったトークン量の目安を表示する
 - 作業中に判断が必要になっても止まらず、質問と既定の対応をダッシュボードに載せて作業を続ける
 
 ダッシュボードとエージェントへの指示は日本語です。
@@ -52,6 +53,7 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 
    - `~/.claude/agents/dashboard-builder.md`
    - `~/.claude/hooks/dashboard-guard.sh`
+   - `~/.claude/hooks/dashboard-usage.py`
    - `~/.claude/nuu/impeccable`
 
 2. `claude-instructions.md` の内容を `~/.claude/CLAUDE.md` に追記します。長い作業で `dashboard-builder` を使うよう、Claude Code に指示するルールです。
@@ -83,6 +85,15 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 open ~/.claude/nuu/dashboards/index.html
 ```
 
+### トークン量
+
+作業ごとのダッシュボードと一覧に、作業で使ったトークン量を表示します。`dashboard-builder` がダッシュボードを書くたびに、フックのスクリプトが Claude Code の会話の記録（`~/.claude/projects/`）から集計します。数えるのは、ダッシュボードを用意し始めてからの分です。
+
+- 内訳: 作業本体、ほかのサブエージェント、ダッシュボードの作成と更新
+- 種類: 入力、出力、キャッシュの読み込み、キャッシュの書き込み
+
+目安として使ってください。会話の記録には、サブエージェントの応答の確定した出力トークンが残らないことがあり、その分は少なめに出ます。
+
 ### 好みを変える
 
 Claude Code に「ダッシュボードを light、airy、teal に変えて」のように頼みます。新しい好みが保存され、次からはその好みで作られます。
@@ -98,6 +109,7 @@ rm ~/.claude/agent-memory/dashboard-builder/style.md
 ## 構成
 
 - `agents/dashboard-builder.md`: サブエージェントの定義
+- `hooks/dashboard-usage.py`: 作業のトークン量を会話の記録から集計し、ダッシュボードの隣の `.usage.js` に書くスクリプト
 - `hooks/dashboard-guard.sh`: 読み書きできる場所を `~/.claude/nuu/dashboards/` と自身のメモリに限り、Bash を `date` だけに限るガード
 - `claude-instructions.md`: `~/.claude/CLAUDE.md` に追記するルール
 - `install.sh`: `~/.claude` へのリンク作成と impeccable の取得
