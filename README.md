@@ -68,6 +68,16 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 
 作業ディレクトリの `.claude-progress/index.html` をダブルクリックで開くと、進み具合を確認できます。
 
+### 好みを変える
+
+Claude Code に「ダッシュボードを light、airy、teal に変えて」のように頼みます。新しい好みが保存され、次からはその好みで作られます。
+
+最初から選び直したいときは、保存した好みを消します。次の作業のときに、もう一度聞かれます。
+
+```sh
+rm ~/.claude/agent-memory/dashboard-builder/style.md
+```
+
 ## 構成
 
 - `agents/dashboard-builder.md`: サブエージェントの定義
