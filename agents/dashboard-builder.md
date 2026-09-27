@@ -16,6 +16,12 @@ hooks:
         - type: command
           command: "\"$HOME/.claude/hooks/dashboard-guard.sh\""
           timeout: 10
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$HOME/.claude/hooks/dashboard-usage.py\""
+          timeout: 30
 ---
 
 # 役割
@@ -103,6 +109,17 @@ hooks:
 - 時刻、件数、進み具合（3 / 8 など）は途中で折り返さない。パスや長い名前は、読める単位で折り返すか省略し、全体をカードの中で確認できるようにする
 - 本文の文字は 14px 以上にする。リンクやボタンは、指で押しやすい大きさ（高さ 44px 程度）にする
 - ホバーでしか見えない情報を作らない
+
+# トークン量
+
+作業のトークン量は、フックのスクリプト（dashboard-usage.py）が、作業ごとのダッシュボードを書き込むたびに集計し、隣の `<作業名>.usage.js` に書く。
+
+- `.usage.js` は作らない、編集しない。トークン量を推測して書かない
+- 作業ごとのダッシュボードでは、描画のスクリプトより前に `<script src="<作業名>.usage.js"></script>` で読み込み、`window.NUU_USAGE["<プロジェクト名>/<作業名>"]` を表示する。読み込めないときや値がないときは「集計前」と表示し、ページは壊さない
+- 表示するのは、合計、内訳（作業本体 `main` / ほかのサブエージェント `subagents` / ダッシュボードの作成と更新 `dashboard`）、種類（入力 `input` / 出力 `output` / キャッシュ読み込み `cacheRead` / キャッシュ書き込み `cacheWrite`）、集計した時刻 `updatedAt`
+- 大きな数は「118 万」のように短くし、正確な値は 3 桁区切りで添える
+- 「目安です。サブエージェントの出力トークンは少なめに出ることがあります」と注記する
+- 一覧では、各作業の `.usage.js` を script 要素で読み込み、作業ごとの合計を表示する。読み込めない作業は「集計前」にする
 
 # 必ず載せる内容
 
