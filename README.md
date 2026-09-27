@@ -10,7 +10,9 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
 
 ## できること
 
-- 作業ディレクトリの `.claude-progress/index.html` に、タスクと状態、利用者への質問と既定の対応、最新の成果物、止まっているものを表示する
+- 作業ごとに 1 枚のダッシュボードを作り、タスクと状態、利用者への質問と既定の対応、最新の成果物、止まっているものを表示する
+- 全プロジェクトの作業を並べた一覧を作る。進行中の作業が上に並び、更新が止まっている作業は目立たせる
+- ダッシュボードは `~/.claude/nuu/dashboards/` にまとめ、作業ディレクトリには何も作らない
 - ダブルクリックで開けて、10 秒ごとに自動で再読み込みする
 - 時刻はすべて実際の時計から取る
 - 初回に好みのスタイル（テーマ、密度、アクセントカラー）を聞き、以降はその好みで作る
@@ -56,19 +58,28 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
    cat claude-instructions.md >> ~/.claude/CLAUDE.md
    ```
 
-3. 必要なら、`.claude-progress/` をグローバルの gitignore に追加します。追加しないと、Git リポジトリで作業するたびに `git status` に表示されます。
-
-   ```sh
-   echo '.claude-progress/' >> ~/.config/git/ignore
-   ```
-
 ## 使い方
 
 5 ステップを超える作業や、30 分を超えそうな作業を Claude Code に頼むと、作業の前にダッシュボードが作られます。初回だけ、テーマ（dark / light）、密度（dense / airy）、アクセントカラーを聞かれます。答えは `~/.claude/agent-memory/dashboard-builder/` に保存され、次からはその好みで作られます。
 
 `claude -p` のように好みを聞けない実行では、仮の好みをその回だけ使い、保存しません。次に対話で使うときに聞かれます。
 
-作業ディレクトリの `.claude-progress/index.html` をダブルクリックで開くと、進み具合を確認できます。
+ダッシュボードは次の場所に作られます。作業を始めるときに、Claude がパスを伝えます。
+
+```text
+~/.claude/nuu/dashboards/
+├── index.html                               全プロジェクトの作業の一覧
+└── <プロジェクト名>/
+    └── <開始日時>-<作業名>.html            作業ごとのダッシュボード
+```
+
+一覧を開いておけば、どのプロジェクトで何が進んでいるかをまとめて確認できます。一覧から作業ごとのダッシュボードに移れます。同じリポジトリで複数のセッションを並行させても、作業ごとに別のファイルになるので混ざりません。
+
+ダッシュボードの途中の更新はバックグラウンドで行うので、作業はその完了を待たずに進みます。用意と完了のときだけ、ダッシュボードができるのを待ちます。
+
+```sh
+open ~/.claude/nuu/dashboards/index.html
+```
 
 ### 好みを変える
 
@@ -83,7 +94,7 @@ rm ~/.claude/agent-memory/dashboard-builder/style.md
 ## 構成
 
 - `agents/dashboard-builder.md`: サブエージェントの定義
-- `hooks/dashboard-guard.sh`: 読み書きできる場所を `.claude-progress/` と自身のメモリに限り、Bash を `date` だけに限るガード
+- `hooks/dashboard-guard.sh`: 読み書きできる場所を `~/.claude/nuu/dashboards/` と自身のメモリに限り、Bash を `date` だけに限るガード
 - `claude-instructions.md`: `~/.claude/CLAUDE.md` に追記するルール
 - `install.sh`: `~/.claude` へのリンク作成と impeccable の取得
 - `uninstall.sh`: リンクを外して `dashboard-builder` を使えなくする
@@ -95,13 +106,13 @@ impeccable はプラグインやグローバルなスキルとしては入れま
 ## アンインストール
 
 ```sh
-./uninstall.sh          # リンクだけ外す。好みのスタイルと impeccable は残す
-./uninstall.sh --purge  # 好みのスタイルと vendor/impeccable も消す
+./uninstall.sh          # リンクだけ外す。好みのスタイル、ダッシュボード、impeccable は残す
+./uninstall.sh --purge  # 好みのスタイル、ダッシュボード、vendor/impeccable も消す
 ```
 
 このリポジトリへのリンクだけを外します。別のファイルに置き換わっていれば残します。`./install.sh` を実行すれば元に戻せます。
 
-`~/.claude/CLAUDE.md` のルール、gitignore の `.claude-progress/` の行、各作業ディレクトリの `.claude-progress/` は自動では消しません。ルールは `dashboard-builder` がなければ適用されない条件付きなので、残しても動作には影響しません。
+`~/.claude/CLAUDE.md` のルールは自動では消しません。ルールは `dashboard-builder` がなければ適用されない条件付きなので、残しても動作には影響しません。
 
 ## テスト
 
