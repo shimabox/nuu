@@ -23,7 +23,13 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
     <th colspan="2">全体の一覧</th>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/images/index-desktop.png" alt="全プロジェクトの作業を並べた一覧"></td>
+    <td colspan="2"><img src="docs/images/index-desktop.png" alt="全プロジェクトの作業を並べた一覧。作業名、セッションの ID の先頭、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ"></td>
+  </tr>
+  <tr>
+    <th colspan="2">作業ごとのダッシュボードの下部にある、セッションの欄</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/dashboard-session.png" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く"></td>
   </tr>
 </table>
 
@@ -50,6 +56,7 @@ https://shimabox.github.io/nuu/
 - タスクはカンバン（状態ごとの列）で表示する。頼めばリストにも変えられる
 - スマホの幅でも読めるように表示する。狭い画面では、カンバンの列を縦に積む
 - 作業で使ったトークン量の目安を表示する
+- 作業したセッションの ID と、`claude --resume` で再開するコマンドを表示する。一覧で止まっている作業を見つけたら、コマンドをコピーしてその会話に戻れる
 - 作業中に判断が必要になっても止まらず、質問と既定の対応をダッシュボードに載せて作業を続ける
 
 ダッシュボードとエージェントへの指示は日本語です。
@@ -157,6 +164,16 @@ open ~/.claude/nuu/dashboards/index.html
 
 目安として使ってください。会話の記録には、サブエージェントの応答の確定した出力トークンが残らないことがあり、その分は少なめに出ます。また、会話の記録の形は Claude Code の公開された仕様ではないため、Claude Code の更新で集計できなくなることがあります。その場合は「集計前」と表示され、ほかの表示には影響しません。
 
+### セッションに戻る
+
+作業ごとのダッシュボードの下部に、作業したセッションの ID、作業ディレクトリ、再開のコマンドを表示します。一覧にも、セッションの ID の先頭 8 文字を出します。
+
+```sh
+cd '/path/to/project' && claude --resume 1ee36b5d-e590-4b2c-a4d7-a311ccb49c5b
+```
+
+値は、トークン量と同じくフックのスクリプトが `.usage.js` に書きます。フックに渡された値をそのまま使うので、モデルが推測することはありません。作業の途中で `/clear` などで新しいセッションに変わったときは、最後にダッシュボードを書いたセッションが表示されます。
+
 ### 好みを変える
 
 Claude Code に「ダッシュボードを light、airy、teal に変えて」のように頼みます。新しい好みが保存され、次からはその好みで作られます。
@@ -174,7 +191,7 @@ rm ~/.claude/agent-memory/dashboard-builder/style.md
 - `agents/dashboard-builder.md`: ダッシュボードを用意するサブエージェントの定義
 - `agents/dashboard-updater.md`: 途中の更新と完了を行うサブエージェントの定義
 - `hooks/dashboard-validate.py`: ダッシュボードのデータを書いた直後に、データファイルの形と JSON が正しいかを確かめるスクリプト
-- `hooks/dashboard-usage.py`: 作業のトークン量を会話の記録から集計し、ダッシュボードと同じフォルダーの `.usage.js` に書くスクリプト
+- `hooks/dashboard-usage.py`: 作業のトークン量を会話の記録から集計し、セッションの ID と作業ディレクトリと一緒に、ダッシュボードと同じフォルダーの `.usage.js` に書くスクリプト
 - `hooks/dashboard-guard.sh`: 読み書きできる場所を `~/.claude/nuu/dashboards/` と自身のメモリに限り、Bash を `date` だけに限るガード
 - `claude-instructions.md`: `~/.claude/CLAUDE.md` から読み込むルール
 - `install.sh`: `~/.claude` へのリンク作成と impeccable の取得

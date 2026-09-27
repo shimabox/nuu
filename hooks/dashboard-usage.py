@@ -2,7 +2,8 @@
 """dashboard-builder か dashboard-updater が作業ごとのダッシュボードかそのデータファイルを書いた直後に、その作業のトークン量を集計する。
 
 会話の記録（Claude 本体とサブエージェント）から、ダッシュボードを用意し始めた時刻以降の
-トークン量を合計し、ダッシュボードと同じフォルダーの <作業>.usage.js に書く。ダッシュボードの HTML と
+トークン量を合計し、ダッシュボードと同じフォルダーの <作業>.usage.js に書く。
+作業したセッションに戻れるよう、セッションの ID と作業ディレクトリも一緒に書く。ダッシュボードの HTML と
 データファイルはエージェントが編集中のため、このスクリプトは書き換えない。
 集計に失敗してもエージェントの作業は止めない。
 """
@@ -147,6 +148,7 @@ def main():
         "since": int(since),
         "updatedAt": int(time.time()),
         "sessionId": payload.get("session_id"),
+        "cwd": payload.get("cwd"),
         "totals": totals,
         "byCategory": categories,
         "byModel": by_model,

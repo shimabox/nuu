@@ -149,6 +149,14 @@ check '詳しいトークン量はページの一番下に置く' body_has '下�
 check 'トークン量は目安と注記する' body_has '目安です。サブエージェントの出力トークンは少なめに出ることがあります'
 check '一覧には目安の注記を付けない' body_has '上部と一覧には注記を付けない'
 check '一覧でも作業ごとの合計を表示する' body_has '一覧では、各作業の `.usage.js` を script 要素で読み込み'
+check 'セッションの ID と作業ディレクトリのデータの形を示す' body_has '"sessionId": "'
+check 'セッションの値は .usage.js からだけ取る' body_has '値は `.usage.js` からだけ取る。データファイルに書かない、推測しない'
+check 'セッションはトークン量の直前に置く' body_has '`id="usage"` の場所の直前に、`id="session"` の見出し付きの場所を置き'
+check '再開のコマンドは作業ディレクトリに移ってから実行する' body_has '`cd <作業ディレクトリ> && claude --resume <セッションの ID>`'
+check '作業ディレクトリは単一引用符で囲む' body_has "作業ディレクトリは単一引用符で囲み、中の \`'\` は \`'\\''\` に置き換える"
+check 'セッションの ID と再開のコマンドをコピーできる' body_has 'それぞれにコピーのボタンを付ける'
+check 'コピーに成功したときだけコピーしたと示す' body_has '`navigator.clipboard.writeText` が成功したときだけ「コピーしました」と短く示す'
+check '一覧ではセッションの ID を短く出す' body_has 'セッションの ID の先頭 8 文字を目立たない色で出す'
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
 check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
 check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
@@ -373,7 +381,7 @@ printf '{"agentType":"Explore"}\n' >"$SESSION/subagents/agent-other.meta.json"
 
 run_usage() {
   jq -n --arg tool "$1" --arg path "$2" --arg log "$MAIN_LOG" \
-    '{tool_name: $tool, transcript_path: $log, agent_id: "setup", session_id: "session", tool_input: {file_path: $path}}' \
+    '{tool_name: $tool, transcript_path: $log, agent_id: "setup", session_id: "session", cwd: "/work/it'"'"'s here", tool_input: {file_path: $path}}' \
     | HOME="$TEST_HOME" "$USAGE_LINK"
 }
 
@@ -403,6 +411,8 @@ expect_usage 'ほかのサブエージェントの分を分けて数える' '.by
 expect_usage '合計を出す' '.totals.total' 1702
 expect_usage '種類ごとに合計する' '[.totals.input, .totals.output, .totals.cacheRead, .totals.cacheWrite] | join(",")' 15,137,1500,50
 expect_usage 'モデルごとに合計する' '.byModel["claude-test"]' 1702
+expect_usage 'セッションの ID を書く' '.sessionId' session
+expect_usage '作業ディレクトリを書く' '.cwd' "/work/it's here"
 
 log_line 2026-09-27T02:00:20.000Z main-2 5 5 0 0 >>"$MAIN_LOG"
 rm "$SESSION/subagents/agent-setup.jsonl"
