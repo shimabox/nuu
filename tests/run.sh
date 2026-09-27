@@ -132,6 +132,7 @@ check 'トークン量は上部に合計だけを出す' body_has '上部: 進�
 check '上部の合計は下部へのページ内リンクにする' body_has '下部の詳しい表示へのページ内リンク（`<a href="#usage">`）にする'
 check '詳しいトークン量はページの一番下に置く' body_has '下部: ページの一番下に `id="usage"` の見出し付きの場所を置き'
 check 'トークン量は目安と注記する' body_has '目安です。サブエージェントの出力トークンは少なめに出ることがあります'
+check '一覧には目安の注記を付けない' body_has '上部と一覧には注記を付けない'
 check '一覧でも作業ごとの合計を表示する' body_has '一覧では、各作業の `.usage.js` を script 要素で読み込み'
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
 check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
