@@ -238,7 +238,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
       <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。</span></li>
       <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
-      <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。1 ファイルの HTML なので、ファイルを開けばブラウザで見られ、10 秒ごとに自分で再読み込みします。</span></li>
+      <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。HTML を開けばブラウザで見られ、10 秒ごとにデータだけを読み直します。ページごと再読み込みしないので、ちらつかず、スクロール位置もそのままです。パネルの構成を変えたときだけ、1 回読み直します。</span></li>
     </ul>
     <figure class="shot">
       <img src="images/index-desktop.png" width="1280" height="330" alt="全プロジェクトの作業の一覧。作業名、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ">
@@ -366,7 +366,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <div class="part">
         <span class="who">dashboard-updater・Haiku 4.5</span>
         <h3>途中の更新は、軽く速く</h3>
-        <p>回数の多い途中の更新は、軽いモデルに任せます。ページの見た目には触れず、埋め込まれたデータだけを書き換えます。今の構成に収まらない変化は、builder に回します。</p>
+        <p>回数の多い途中の更新は、軽いモデルに任せます。ページの見た目には触れず、HTML と同じフォルダーのデータファイルだけを書き換えます。今の構成に収まらない変化は、builder に回します。</p>
       </div>
       <div class="part">
         <span class="who">フック</span>

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""dashboard-builder か dashboard-updater が作業ごとのダッシュボードを書いた直後に、その作業のトークン量を集計する。
+"""dashboard-builder か dashboard-updater が作業ごとのダッシュボードかそのデータファイルを書いた直後に、その作業のトークン量を集計する。
 
 会話の記録（Claude 本体とサブエージェント）から、ダッシュボードを用意し始めた時刻以降の
-トークン量を合計し、ダッシュボードの隣の <作業>.usage.js に書く。ダッシュボードの HTML は
-エージェントが編集中のため、このスクリプトは書き換えない。
+トークン量を合計し、ダッシュボードと同じフォルダーの <作業>.usage.js に書く。ダッシュボードの HTML と
+データファイルはエージェントが編集中のため、このスクリプトは書き換えない。
 集計に失敗してもエージェントの作業は止めない。
 """
 
@@ -105,15 +105,19 @@ def main():
         return
     target = os.path.realpath(os.path.expanduser((payload.get("tool_input") or {}).get("file_path") or ""))
     relative = os.path.relpath(target, DASHBOARDS)
-    # 作業ごとのダッシュボード（<プロジェクト>/<作業>.html）だけを対象にし、一覧やメモリは数えない。
-    if relative.startswith("..") or relative.count(os.sep) != 1 or not relative.endswith(".html"):
+    # 作業ごとのダッシュボード（<プロジェクト>/<作業>.html）とそのデータファイル（<作業>.data.js）
+    # だけを対象にし、一覧やメモリは数えない。
+    suffix = next((end for end in (".html", ".data.js") if relative.endswith(end)), None)
+    if relative.startswith("..") or relative.count(os.sep) != 1 or suffix is None:
         return
+    target = target[: -len(suffix)]
+    relative = relative[: -len(suffix)]
 
     transcript = payload.get("transcript_path") or ""
     session_dir = transcript[: -len(".jsonl")] if transcript.endswith(".jsonl") else ""
     subagents_dir = os.path.join(session_dir, "subagents")
-    key = relative[: -len(".html")].replace(os.sep, "/")
-    usage_path = target[: -len(".html")] + ".usage.js"
+    key = relative.replace(os.sep, "/")
+    usage_path = target + ".usage.js"
 
     existing = read_existing(usage_path) or {}
     since = existing.get("since")
