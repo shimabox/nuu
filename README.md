@@ -1,4 +1,9 @@
-# nuu
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+    <img src="docs/images/logo-light.svg" alt="nuu" width="172" height="60">
+  </picture>
+</h1>
 
 Claude Code で長い作業をするときに、進み具合を 1 枚の HTML で見られるようにするサブエージェントです。ダッシュボードを用意する `dashboard-builder` と、途中の更新と完了を行う `dashboard-updater` の 2 つで動きます。
 
