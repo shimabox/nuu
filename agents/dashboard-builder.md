@@ -116,7 +116,23 @@ hooks:
 
 - `.usage.js` は作らない、編集しない。トークン量を推測して書かない
 - 作業ごとのダッシュボードでは、描画のスクリプトより前に `<script src="<作業名>.usage.js"></script>` で読み込み、`window.NUU_USAGE["<プロジェクト名>/<作業名>"]` を表示する。読み込めないときや値がないときは「集計前」と表示し、ページは壊さない
-- 表示するのは、合計、内訳（作業本体 `main` / ほかのサブエージェント `subagents` / ダッシュボードの作成と更新 `dashboard`）、種類（入力 `input` / 出力 `output` / キャッシュ読み込み `cacheRead` / キャッシュ書き込み `cacheWrite`）、集計した時刻 `updatedAt`
+- `.usage.js` のデータは次の形で固定されている。項目名を推測せず、この名前で読む（数値はトークン数、時刻は UNIX 秒）
+
+  ```
+  {
+    "since": 1790476873,
+    "updatedAt": 1790477245,
+    "totals": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+    "byCategory": {
+      "main":      { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+      "subagents": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+      "dashboard": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 }
+    },
+    "byModel": { "<モデル名>": 0 }
+  }
+  ```
+
+- 表示するのは、合計 `totals.total`、内訳（作業本体 `byCategory.main.total` / ほかのサブエージェント `byCategory.subagents.total` / ダッシュボードの作成と更新 `byCategory.dashboard.total`）、種類（入力 `totals.input` / 出力 `totals.output` / キャッシュ読み込み `totals.cacheRead` / キャッシュ書き込み `totals.cacheWrite`）、集計した時刻 `updatedAt`
 - 大きな数は「118 万」のように短くし、正確な値は 3 桁区切りで添える
 - 「目安です。サブエージェントの出力トークンは少なめに出ることがあります」と注記する
 - 一覧では、各作業の `.usage.js` を script 要素で読み込み、作業ごとの合計を表示する。読み込めない作業は「集計前」にする

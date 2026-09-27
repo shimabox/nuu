@@ -125,6 +125,9 @@ check '集計は ~/.claude/hooks のリンクから呼ぶ' \
   has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
 check 'トークン量のファイルは作らず編集もしない' body_has '`.usage.js` は作らない、編集しない。トークン量を推測して書かない'
 check 'トークン量は作業ごとのキーで読む' body_has 'window.NUU_USAGE["<プロジェクト名>/<作業名>"]'
+check 'トークン量のデータの形を項目名まで示す' body_has '"byCategory": {'
+check '合計は totals.total で読む' body_has '合計 `totals.total`'
+check '内訳は byCategory で読む' body_has '作業本体 `byCategory.main.total`'
 check 'トークン量は目安と注記する' body_has '目安です。サブエージェントの出力トークンは少なめに出ることがあります'
 check '一覧でも作業ごとの合計を表示する' body_has '一覧では、各作業の `.usage.js` を script 要素で読み込み'
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
