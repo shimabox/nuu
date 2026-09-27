@@ -400,6 +400,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <div class="guard"><h3>読み書きできる場所を絞る</h3><p>ダッシュボードを書く 2 つのサブエージェントが読み書きできるのは、<code>~/.claude/nuu/dashboards/</code> と自身のメモリだけです。コマンドは、時刻を取る <code>date</code> だけを使えます。</p></div>
       <div class="guard"><h3>作業ディレクトリには何も作らない</h3><p>ダッシュボードはホームの決まった場所にまとまるので、作業中のリポジトリに余計なファイルが増えません。</p></div>
       <div class="guard"><h3>時刻は実際の時計から</h3><p>記録する時刻は、推測ではなく <code>date</code> で取った値です。更新が 15 分以上止まっていると、ダッシュボードと一覧が知らせます。</p></div>
+      <div class="guard"><h3>CLAUDE.md に 1 行を書き込む</h3><p><code>install.sh</code> は <code>~/.claude/CLAUDE.md</code> に、ルールを読み込む 1 行を足します。dotfiles などでシンボリックリンクにしている場合は、リンク先の実体に書き込みます。<code>uninstall.sh</code> は、その 1 行だけを消します。</p></div>
       <div class="guard"><h3>残る内容に注意</h3><p>ダッシュボードには、作業の概要や質問、成果物のパスがそのまま残ります。スマホなどから見るために外部へ公開するときは、その中身ごと見えることになります。公開の仕組みは、利用者が自分の環境で用意します。</p></div>
     </div>
   </section>
@@ -439,9 +440,9 @@ cd nuu
 ./install.sh</code></pre>
       </div>
       <div class="step">
-        <h3>ルールを CLAUDE.md に足す</h3>
-        <p>長い作業でダッシュボードを使うよう、Claude Code に伝えるルールです。</p>
-        <pre><code>cat claude-instructions.md &gt;&gt; ~/.claude/CLAUDE.md</code></pre>
+        <h3>CLAUDE.md にルールを読み込ませる</h3>
+        <p><code>install.sh</code> が <code>~/.claude/CLAUDE.md</code> の末尾に次の 1 行を足します。長い作業でダッシュボードを使うよう、Claude Code に伝えるルールを読み込む行です。書き換えたくないときは <code>--no-claude-md</code> を付けて実行し、この 1 行を自分で足します。</p>
+        <pre><code>@~/.claude/nuu/claude-instructions.md</code></pre>
       </div>
       <div class="step">
         <h3>長い作業を頼んで、一覧を開く</h3>

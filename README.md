@@ -87,13 +87,16 @@ https://shimabox.github.io/nuu/
    - `~/.claude/hooks/dashboard-guard.sh`
    - `~/.claude/hooks/dashboard-validate.py`
    - `~/.claude/hooks/dashboard-usage.py`
+   - `~/.claude/nuu/claude-instructions.md`
    - `~/.claude/nuu/impeccable`
 
-2. `claude-instructions.md` の内容を `~/.claude/CLAUDE.md` に追記します。長い作業で `dashboard-builder` を使うよう、Claude Code に指示するルールです。
+2. `install.sh` は、`~/.claude/CLAUDE.md` の末尾に次の 1 行を足します。長い作業で `dashboard-builder` を使うよう Claude Code に指示するルール（`claude-instructions.md`）を読み込む行です。ルールの本文はコピーしないので、リポジトリを更新すればルールも最新になります。
 
-   ```sh
-   cat claude-instructions.md >> ~/.claude/CLAUDE.md
+   ```text
+   @~/.claude/nuu/claude-instructions.md
    ```
+
+   `CLAUDE.md` を書き換えたくないときは、`./install.sh --no-claude-md` を実行し、上の 1 行を自分で足します。以前の手順でルールの本文を追記している場合は、`install.sh` は 1 行を足さずに知らせるので、その節を消して 1 行に置き換えてください。
 
 ## 使い方
 
@@ -159,7 +162,7 @@ rm ~/.claude/agent-memory/dashboard-builder/style.md
 - `hooks/dashboard-validate.py`: ダッシュボードを書いた直後に、埋め込んだデータが JSON として正しいかを確かめるスクリプト
 - `hooks/dashboard-usage.py`: 作業のトークン量を会話の記録から集計し、ダッシュボードの隣の `.usage.js` に書くスクリプト
 - `hooks/dashboard-guard.sh`: 読み書きできる場所を `~/.claude/nuu/dashboards/` と自身のメモリに限り、Bash を `date` だけに限るガード
-- `claude-instructions.md`: `~/.claude/CLAUDE.md` に追記するルール
+- `claude-instructions.md`: `~/.claude/CLAUDE.md` から読み込むルール
 - `install.sh`: `~/.claude` へのリンク作成と impeccable の取得
 - `uninstall.sh`: リンクを外して、nuu のサブエージェントを使えなくする
 - `tests/run.sh`: 仕様を確認するテスト
@@ -187,6 +190,7 @@ impeccable はプラグインやグローバルなスキルとしては入れま
 - ガードは、`dashboard-builder` と `dashboard-updater` が `~/.claude/nuu/dashboards/` と自身のメモリを読み書きするときに、確認なしで許可します。それ以外の場所の読み書きと、`date` 以外のコマンドは拒否します
 - ダッシュボードには、作業の概要、質問、成果物のパスなどが、そのまま HTML に残ります。スマホなどから見るために外部へ公開するときは、その中身ごと見えることに注意してください。公開の仕組みは nuu には含まれていないので、利用者の環境に合わせて用意します
 - ダッシュボードは Claude Code の指示に従ってモデルが作るため、見た目やパネルの構成は作業ごとに変わります
+- `install.sh` は `~/.claude/CLAUDE.md` に 1 行を書き込みます。`CLAUDE.md` をシンボリックリンクで管理している場合（dotfiles など）は、リンク先の実体に書き込みます。書き換えたくないときは `--no-claude-md` を付けて実行してください。`uninstall.sh` は、その 1 行だけを消します
 
 ## アンインストール
 
@@ -197,7 +201,7 @@ impeccable はプラグインやグローバルなスキルとしては入れま
 
 このリポジトリへのリンクだけを外します。別のファイルに置き換わっていれば残します。`./install.sh` を実行すれば元に戻せます。
 
-`~/.claude/CLAUDE.md` のルールは自動では消しません。ルールは `dashboard-builder` がなければ適用されない条件付きなので、残しても動作には影響しません。
+`~/.claude/CLAUDE.md` からは、`install.sh` が足した読み込みの 1 行だけを消します。ほかの内容には触れません。以前の手順でルールの本文を追記している場合は、自動では消さないので、不要なら手で消してください。
 
 ## テスト
 
