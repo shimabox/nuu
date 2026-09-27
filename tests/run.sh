@@ -127,7 +127,11 @@ check '作業ディレクトリにはダッシュボードを作らない' fails
 check '10 秒ごとに自動で再読み込みする' body_has '<meta http-equiv="refresh" content="10">'
 check '時刻は date +%s で取得する' body_has 'date +%s'
 check '好みが未記録なら NEEDS_STYLE を返す' body_has 'NEEDS_STYLE'
-check '好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
+check '初回に聞く好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
+check 'タスクの表示は聞かず、既定はカンバン' body_has 'タスクの表示（kanban | list）は NEEDS_STYLE で聞かない。記録がなければ kanban にする'
+check 'カンバンでは状態ごとの列にタスクを並べる' body_has 'kanban: 状態ごとの列（未着手 / 進行中 / 待ち / 停止 / 完了）'
+check 'タスクの表示は作業によって変えない' body_has 'タスクの表示だけは好みに従い、作業によって変えない'
+check 'NEEDS_STYLE ではタスクの表示を聞かない' fails grep -q -- '- layout' <<<"$body"
 check '好みの変更を受け取ったら上書きする' body_has '利用者から変更の指示が渡されたら上書きする'
 check '利用者の答えとして渡された好みだけを保存する' body_has '「利用者の答え」としてスタイルが渡されたら、`style.md` に保存し'
 check '今回だけの好みは保存しない' body_has '「今回だけ」としてスタイルが渡されたら、そのダッシュボードにだけ使い、メモリには保存しない'
@@ -164,7 +168,7 @@ check '途中の更新は待たずに次の手順へ進む' rules_have '途中�
 check '用意は完了を待つ' rules_have '用意（setup）は返ってくるパスが必要なので、完了を待つ'
 check '同じダッシュボードを同時に更新させない' rules_have '同じダッシュボードを同時に更新させない'
 check '完了の更新は待ってから報告する' rules_have '終わるのを待ってから利用者に報告する'
-check '好みの変更を求められたら dashboard-builder に渡す' rules_have '好み（テーマ、密度、アクセントカラー）の変更を求めたら、新しい好みを「利用者の答え」として `dashboard-builder` に渡す'
+check '好みの変更を求められたら dashboard-builder に渡す' rules_have '好み（テーマ、密度、アクセントカラー、タスクの表示）の変更を求めたら、新しい好みを「利用者の答え」として `dashboard-builder` に渡す'
 check '判断待ちでは止まらず既定の対応で続ける' rules_have '止まって待たずに'
 check '取り消せない操作は既定の対応で進めない' rules_have '取り消せない操作や外部に公開される操作'
 
