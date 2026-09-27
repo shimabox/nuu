@@ -392,7 +392,8 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><span class="n">3</span><div class="body"><span class="tag go">待たない</span><h3>手順ごとに更新する</h3><p>手順を 1 つ終えるたびに、updater がバックグラウンドで更新します。作業は更新を待たずに進み、前の更新が終わっていなければ、次の変化とまとめて渡します。</p></div></li>
       <li><span class="n">4</span><div class="body"><span class="tag go">止まらない</span><h3>判断が必要になったら</h3><p>質問と既定の対応をダッシュボードに載せ、既定の対応で作業を続けます。都合のよいときにダッシュボードで質問を確かめ、答えは Claude Code に伝えます。</p></div></li>
       <li><span class="n">5</span><div class="body"><span class="tag stop">承認を待つ</span><h3>取り消せない操作は別</h3><p>削除、push、送信のような取り消せない操作や外部に公開される操作は、既定の対応では進めず、承認を待ちます。その間も、進められるほかの手順があれば続けます。</p></div></li>
-      <li><span class="n">6</span><div class="body"><span class="tag wait">待つ</span><h3>完了にして報告する</h3><p>作業が終わったら、ダッシュボードを完了にしてから報告します。一覧では、完了した作業の側に移ります。</p></div></li>
+      <li><span class="n">6</span><div class="body"><span class="tag wait">待つ</span><h3>途中で止めたら、中断中にする</h3><p>「今日はここまで」のように止めると、ダッシュボードを中断中にしてから報告します。中断中の作業には、更新が止まっている警告を出しません。再開すると、進行中に戻してから続けます。</p></div></li>
+      <li><span class="n">7</span><div class="body"><span class="tag wait">待つ</span><h3>完了にして報告する</h3><p>作業が終わったら、ダッシュボードを完了にしてから報告します。一覧では、完了した作業の側に移ります。</p></div></li>
     </ol>
   </section>
 

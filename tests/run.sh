@@ -160,6 +160,12 @@ check '一覧ではセッションの ID を短く出す' body_has 'セッショ
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
 check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
 check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
+check '一覧は進行中、中断中、完了の順に分ける' body_has '進行中、中断中、完了の順に分けて並べ'
+check '一覧では中断中と完了の作業に止まった警告を出さない' body_has '中断中と完了の作業には出さない'
+check '作業全体の状態は進行中、中断中、完了の 3 つで持つ' body_has '`status` に `active`（進行中）、`paused`（中断中）、`done`（完了）のどれかで持つ'
+check '作業全体の状態は色と文字の両方で見分けられるようにする' body_has '3 つを色と文字の両方で見分けられるように表示し'
+check '知らない状態は進行中として扱う' body_has '知らない値は進行中として扱う'
+check '作業ごとのページでも中断中と完了には止まった警告を出さない' body_has '作業が進行中で、15 分以上更新がなければ目立つ警告を出す。中断中と完了のときは出さない'
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
 check 'データは HTML と同じフォルダーのデータファイルに置く' body_has '`<HTML のファイル名から .html を除いたもの>.data.js` に置く'
@@ -248,6 +254,11 @@ check 'updater はパスがなければ推測しない' updater_says '何もせ�
 check 'updater は構成を変えずに builder へ回す' updater_says '何も変えずに「構成の見直しが必要です」と理由を添えて返す'
 check 'updater はトークン量のファイルに触れない' updater_says '`.usage.js` を作らない、編集しない'
 check 'updater は好みやメモリに触れない' updater_says '好みのスタイルやメモリに触れない'
+check 'updater は完了した作業の状態を done にする' updater_says '作業全体の状態 `status` を `done`（完了）にし'
+check 'updater は完了で一覧の行の状態もそろえる' updater_says '一覧のこの作業の行の状態も `done` にそろえる'
+check 'updater は途中で止めた作業を中断中にする' updater_says '作業全体の状態 `status` を `paused`（中断中）にする。完了にはしない'
+check 'updater は再開した作業を進行中に戻す' updater_says '再開したと渡されたら、`status` を `active`（進行中）に戻す'
+check 'updater は中断と再開で一覧の行の状態もそろえる' updater_says '一覧のこの作業の行の状態を同じ値にそろえる'
 
 echo '== CLAUDE.md に追記するルール =='
 
@@ -276,6 +287,9 @@ check '完了の更新は待ってから報告する' rules_have '終わるの�
 check '好みの変更を求められたら dashboard-builder に渡す' rules_have '好み（テーマ、密度、アクセントカラー、タスクの表示）の変更を求めたら、新しい好みを「利用者の答え」として `dashboard-builder` に渡す'
 check '判断待ちでは止まらず既定の対応で続ける' rules_have '止まって待たずに'
 check '取り消せない操作は既定の対応で進めない' rules_have '取り消せない操作や外部に公開される操作'
+check '途中で止めたら中断中にして報告する' rules_have '利用者が作業を途中で止めたら、`dashboard-updater` で中断中に更新し'
+check '途中で止めた作業は完了にしない' rules_have '中断中に更新し、終わるのを待ってから利用者に報告する。完了にはしない'
+check '再開したら進行中に戻す' rules_have '再開したら、進行中に戻してから続ける'
 
 echo '== ガード =='
 
