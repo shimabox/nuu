@@ -16,6 +16,12 @@ hooks:
         - type: command
           command: "\"$HOME/.claude/hooks/dashboard-guard.sh\""
           timeout: 10
+  PostToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "\"$HOME/.claude/hooks/dashboard-usage.py\""
+          timeout: 30
 ---
 
 # 役割
@@ -103,6 +109,37 @@ hooks:
 - 時刻、件数、進み具合（3 / 8 など）は途中で折り返さない。パスや長い名前は、読める単位で折り返すか省略し、全体をカードの中で確認できるようにする
 - 本文の文字は 14px 以上にする。リンクやボタンは、指で押しやすい大きさ（高さ 44px 程度）にする
 - ホバーでしか見えない情報を作らない
+
+# トークン量
+
+作業のトークン量は、フックのスクリプト（dashboard-usage.py）が、作業ごとのダッシュボードを書き込むたびに集計し、隣の `<作業名>.usage.js` に書く。
+
+- `.usage.js` は作らない、編集しない。トークン量を推測して書かない
+- 作業ごとのダッシュボードでは、描画のスクリプトより前に `<script src="<作業名>.usage.js"></script>` で読み込み、`window.NUU_USAGE["<プロジェクト名>/<作業名>"]` を表示する。読み込めないときや値がないときは「集計前」と表示し、ページは壊さない
+- `.usage.js` のデータは次の形で固定されている。項目名を推測せず、この名前で読む（数値はトークン数、時刻は UNIX 秒）
+
+  ```
+  {
+    "since": 1790476873,
+    "updatedAt": 1790477245,
+    "totals": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+    "byCategory": {
+      "main":      { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+      "subagents": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 },
+      "dashboard": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0 }
+    },
+    "byModel": { "<モデル名>": 0 }
+  }
+  ```
+
+- 表示するのは、合計 `totals.total`、内訳（作業本体 `byCategory.main.total` / ほかのサブエージェント `byCategory.subagents.total` / ダッシュボードの作成と更新 `byCategory.dashboard.total`）、種類（入力 `totals.input` / 出力 `totals.output` / キャッシュ読み込み `totals.cacheRead` / キャッシュ書き込み `totals.cacheWrite`）、集計した時刻 `updatedAt`
+- 置き場所は 2 か所に分ける
+  - 上部: 進み具合などの要約の近くに、合計だけを「297 万トークン」のように短く出す。これを下部の詳しい表示へのページ内リンク（`<a href="#usage">`）にする。スマホでも押しやすい大きさにする
+  - 下部: ページの一番下に `id="usage"` の見出し付きの場所を置き、合計、内訳、種類、集計した時刻、注記を載せる
+  - 集計前なら、上部は「トークン量 集計前」とし、同じく下部へのリンクにする
+- 大きな数は「118 万」のように短くし、正確な値は 3 桁区切りで添える
+- 下部の詳しい表示にだけ「目安です。サブエージェントの出力トークンは少なめに出ることがあります」と注記する。上部と一覧には注記を付けない
+- 一覧では、各作業の `.usage.js` を script 要素で読み込み、作業ごとの合計を表示する。読み込めない作業は「集計前」にする
 
 # 必ず載せる内容
 

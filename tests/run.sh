@@ -82,6 +82,7 @@ links_to() {
 
 readonly AGENT_LINK="$TEST_HOME/.claude/agents/dashboard-builder.md"
 readonly GUARD_LINK="$TEST_HOME/.claude/hooks/dashboard-guard.sh"
+readonly USAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-usage.py"
 readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
 readonly IMPECCABLE_DIR="$REPO/vendor/impeccable/plugin/skills/impeccable"
 readonly IMPECCABLE_LINK="$TEST_HOME/.claude/nuu/impeccable"
@@ -119,6 +120,20 @@ check '作業ごとに ~/.claude/nuu/dashboards/ の下へ 1 ファイル作る'
 check 'ほかの作業のファイルは上書きしない' body_has 'ほかの作業のファイルは上書きしない'
 check 'update と finish は渡されたパスのファイルだけを更新する' body_has 'update と finish では、呼び出し元から渡されたパスのファイルだけを更新する'
 check 'パスがなければ既存のファイルを推測で選ばない' body_has 'パスが渡されていなければ、推測で既存のファイルを選ばず'
+check 'ダッシュボードを書いたあとにトークン量を集計する' has_line '    - matcher: "Write|Edit"'
+check '集計は ~/.claude/hooks のリンクから呼ぶ' \
+  has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
+check 'トークン量のファイルは作らず編集もしない' body_has '`.usage.js` は作らない、編集しない。トークン量を推測して書かない'
+check 'トークン量は作業ごとのキーで読む' body_has 'window.NUU_USAGE["<プロジェクト名>/<作業名>"]'
+check 'トークン量のデータの形を項目名まで示す' body_has '"byCategory": {'
+check '合計は totals.total で読む' body_has '合計 `totals.total`'
+check '内訳は byCategory で読む' body_has '作業本体 `byCategory.main.total`'
+check 'トークン量は上部に合計だけを出す' body_has '上部: 進み具合などの要約の近くに、合計だけを'
+check '上部の合計は下部へのページ内リンクにする' body_has '下部の詳しい表示へのページ内リンク（`<a href="#usage">`）にする'
+check '詳しいトークン量はページの一番下に置く' body_has '下部: ページの一番下に `id="usage"` の見出し付きの場所を置き'
+check 'トークン量は目安と注記する' body_has '目安です。サブエージェントの出力トークンは少なめに出ることがあります'
+check '一覧には目安の注記を付けない' body_has '上部と一覧には注記を付けない'
+check '一覧でも作業ごとの合計を表示する' body_has '一覧では、各作業の `.usage.js` を script 要素で読み込み'
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
 check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
 check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
@@ -212,7 +227,7 @@ expect_guard() {
   if [[ "$got" == "$expected" ]]; then
     pass "$name"
   else
-    fail "$name（期待: $expected、結果: $got）"
+    fail "${name}（期待: ${expected}、結果: ${got}）"
   fi
 }
 
@@ -251,6 +266,81 @@ expect_guard deny 'date にコマンド置換を渡せない' Bash "$(command_in
 expect_guard deny 'date の出力をリダイレクトできない' Bash "$(command_input 'date > ~/.claude/nuu/dashboards/x')"
 expect_guard none '報告用の内部ツールには口を出さない' SubagentHandback '{"message": "done"}'
 
+echo '== トークン量の集計 =='
+
+ln -s "$REPO/hooks/dashboard-usage.py" "$USAGE_LINK"
+readonly PROJECTS="$TEST_ROOT/projects/work"
+readonly SESSION="$PROJECTS/session"
+readonly MAIN_LOG="$PROJECTS/session.jsonl"
+mkdir -p "$SESSION/subagents"
+
+# 応答 1 行を作る。同じ id の行は、書き出し途中の値と確定した値を表す。
+log_line() {
+  jq -cn --arg ts "$1" --arg id "$2" --argjson input "$3" --argjson output "$4" \
+    --argjson read "$5" --argjson write "$6" \
+    '{type: "assistant", timestamp: $ts, message: {id: $id, model: "claude-test",
+      usage: {input_tokens: $input, output_tokens: $output,
+        cache_read_input_tokens: $read, cache_creation_input_tokens: $write}}}'
+}
+
+{
+  log_line 2026-09-27T01:59:00.000Z before 999 999 999 999
+  log_line 2026-09-27T02:00:10.000Z main-1 10 5 1000 50
+  log_line 2026-09-27T02:00:11.000Z main-1 10 100 1000 50
+} >"$MAIN_LOG"
+{
+  jq -cn '{type: "user", timestamp: "2026-09-27T02:00:00.000Z"}'
+  log_line 2026-09-27T02:00:01.000Z board-1 2 7 500 0
+} >"$SESSION/subagents/agent-setup.jsonl"
+printf '{"agentType":"dashboard-builder"}\n' >"$SESSION/subagents/agent-setup.meta.json"
+log_line 2026-09-27T02:00:05.000Z other-1 3 30 0 0 >"$SESSION/subagents/agent-other.jsonl"
+printf '{"agentType":"Explore"}\n' >"$SESSION/subagents/agent-other.meta.json"
+
+run_usage() {
+  jq -n --arg tool "$1" --arg path "$2" --arg log "$MAIN_LOG" \
+    '{tool_name: $tool, transcript_path: $log, agent_id: "setup", session_id: "session", tool_input: {file_path: $path}}' \
+    | HOME="$TEST_HOME" "$USAGE_LINK"
+}
+
+usage_of() {
+  sed -n 2p "$DASH_DIR/project/task.usage.js" | sed 's/^.*\] = {/{/; s/;$//' | jq -r "$1"
+}
+
+expect_usage() {
+  local got
+
+  got="$(usage_of "$2")"
+  if [[ "$got" == "$3" ]]; then
+    pass "$1"
+  else
+    fail "${1}（期待: ${3}、結果: ${got}）"
+  fi
+}
+
+check '作業ごとのダッシュボードを書いたら集計が成功する' run_usage Write "$DASH_DIR/project/task.html"
+check '集計結果をダッシュボードの隣に書く' test -f "$DASH_DIR/project/task.usage.js"
+check '作業ごとのキーで書く' grep -qF '["project/task"]' "$DASH_DIR/project/task.usage.js"
+expect_usage '用意を始めた時刻から数える' '.since | todate' 2026-09-27T02:00:00Z
+expect_usage '同じ応答は最大値で 1 回だけ数える' '.byCategory.main.total' 1160
+expect_usage '用意より前の応答は数えない' '.byCategory.main.input' 10
+expect_usage 'dashboard-builder の分を分けて数える' '.byCategory.dashboard.total' 509
+expect_usage 'ほかのサブエージェントの分を分けて数える' '.byCategory.subagents.total' 33
+expect_usage '合計を出す' '.totals.total' 1702
+expect_usage '種類ごとに合計する' '[.totals.input, .totals.output, .totals.cacheRead, .totals.cacheWrite] | join(",")' 15,137,1500,50
+expect_usage 'モデルごとに合計する' '.byModel["claude-test"]' 1702
+
+log_line 2026-09-27T02:00:20.000Z main-2 5 5 0 0 >>"$MAIN_LOG"
+rm "$SESSION/subagents/agent-setup.jsonl"
+check '2 回目の集計が成功する' run_usage Edit "$DASH_DIR/project/task.html"
+expect_usage '2 回目も用意を始めた時刻を保つ' '.since | todate' 2026-09-27T02:00:00Z
+expect_usage '2 回目は増えた分を足す' '.byCategory.main.total' 1170
+
+check '一覧を書いても成功する' run_usage Write "$DASH_DIR/index.html"
+check '一覧のトークン量は作らない' test ! -e "$DASH_DIR/index.usage.js"
+check 'メモリを書いても成功する' run_usage Write "$MEMORY_DIR/style.md"
+check 'メモリのトークン量は作らない' test ! -e "$MEMORY_DIR/style.usage.js"
+check '壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$USAGE_LINK"
+
 echo '== install.sh =='
 
 rm -rf "$TEST_HOME/.claude" "$REPO/vendor"
@@ -260,6 +350,7 @@ printf 'keep\n' >"$TEST_HOME/.claude/CLAUDE.md"
 check 'インストールが成功する' run_install
 check 'エージェント定義をリポジトリへのリンクにする' links_to "$AGENT_LINK" "$REPO/agents/dashboard-builder.md"
 check 'ガードをリポジトリへのリンクにする' links_to "$GUARD_LINK" "$REPO/hooks/dashboard-guard.sh"
+check '集計スクリプトをリポジトリへのリンクにする' links_to "$USAGE_LINK" "$REPO/hooks/dashboard-usage.py"
 check 'impeccable を sparse clone で取得する' \
   grep -qxF "clone --quiet --filter=blob:none --sparse --no-checkout https://github.com/pbakaus/impeccable.git $REPO/vendor/impeccable" "$GIT_LOG"
 check 'impeccable はスキル部分だけを取り出す' \
@@ -286,6 +377,7 @@ printf 'style\n' >"$MEMORY_DIR/style.md"
 check 'アンインストールが成功する' run_uninstall
 check 'エージェント定義のリンクを外す' test ! -e "$AGENT_LINK"
 check 'ガードのリンクを外す' test ! -e "$GUARD_LINK"
+check '集計スクリプトのリンクを外す' test ! -e "$USAGE_LINK"
 check '好みのスタイルは残す' test -f "$MEMORY_DIR/style.md"
 check 'impeccable へのリンクを外す' test ! -e "$IMPECCABLE_LINK"
 check '空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
