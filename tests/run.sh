@@ -119,6 +119,7 @@ check '10 秒ごとに自動で再読み込みする' body_has '<meta http-equiv
 check '時刻は date +%s で取得する' body_has 'date +%s'
 check '好みが未記録なら NEEDS_STYLE を返す' body_has 'NEEDS_STYLE'
 check '好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
+check '好みの変更を受け取ったら上書きする' body_has '利用者から変更の指示が渡されたら上書きする'
 check '外部の CSS や JavaScript を読み込まない' body_has '外部の CSS、JavaScript、フォント、画像は読み込まない'
 check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
 for section in 'タスクと状態' '利用者への質問' '最新の成果物' '止まっているもの'; do
@@ -142,6 +143,7 @@ check 'dashboard-builder が使えるときだけ適用する' rules_have 'dashb
 check '5 ステップ超か 30 分超の作業で着手前に用意する' rules_have '5 ステップを超える作業、または 30 分を超えそうな作業では、着手前に'
 check '1 ステップごとに更新する' rules_have '1 ステップ終えるごとに'
 check 'NEEDS_STYLE なら利用者に好みを聞く' rules_have 'NEEDS_STYLE` を返したら、AskUserQuestion で'
+check '好みの変更を求められたら dashboard-builder に渡す' rules_have '好み（テーマ、密度、アクセントカラー）の変更を求めたら、新しい好みを `dashboard-builder` に渡す'
 check '判断待ちでは止まらず既定の対応で続ける' rules_have '止まって待たずに'
 check '取り消せない操作は既定の対応で進めない' rules_have '取り消せない操作や外部に公開される操作'
 
