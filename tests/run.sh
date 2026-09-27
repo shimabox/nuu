@@ -138,6 +138,11 @@ check '今回だけの好みは保存しない' body_has '「今回だけ」と�
 check 'どちらか示されていなければ保存しない' body_has '示されていなければ、今回だけとして扱う'
 check 'update と finish では好みを聞き直さない' body_has 'update と finish では NEEDS_STYLE を返さない'
 check '外部の CSS や JavaScript を読み込まない' body_has '外部の CSS、JavaScript、フォント、画像は読み込まない'
+check 'スマホの幅に合わせる viewport を入れる' body_has '<meta name="viewport" content="width=device-width, initial-scale=1">'
+check '幅 360px でも横にはみ出さない' body_has '幅 360px でも、ページ全体が横にはみ出さない'
+check '狭い画面ではカンバンの列を縦に積む' body_has 'カンバンは、狭い画面では列を縦に積む'
+check '狭い画面では質問と止まっているものを一番上に置く' body_has '未回答の質問と止まっているものを一番上に置く'
+check 'ホバーでしか見えない情報を作らない' body_has 'ホバーでしか見えない情報を作らない'
 check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
 for section in 'タスクと状態' '利用者への質問' '最新の成果物' '止まっているもの'; do
   check "必ず載せる内容に「${section}」がある" body_has "$section"
