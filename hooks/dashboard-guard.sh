@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# dashboard-builder サブエージェント専用のガード。
-# ~/.claude/nuu/dashboards/ と自分のメモリだけを読み書きでき、
-# このリポジトリの vendor/ にある impeccable だけを読み取りできる。Bash は date だけを許可する。
+# dashboard-builder と dashboard-updater 専用のガード。
+# 読めるのは ~/.claude/nuu/dashboards/ の下だけ。書けるのは、作業のデータファイル
+# （<プロジェクト名>/<開始日時>-<作業名>.data.js）と好み（prefs.data.js）だけ。Bash は date だけを許可する。
+# スタブ（.html）、一覧のデータ（index.data.js）、トークン量（.usage.js）はフックが書くので、モデルには書かせない。
+# _client は固定クライアント（リポジトリの client/）へのリンクなので、読み書きさせない。
 # 許可した操作は、作業ディレクトリの外でも確認なしで通るよう、明示的に allow を返す。
 # ほかのツールはエージェント定義の tools で使えなくしている。結果の報告など Claude Code
 # 内部のツールを止めないよう、このフックはファイル操作と Bash にだけ掛ける。
@@ -39,24 +41,24 @@ case "$tool" in
     command_value="$(jq -r '.tool_input.command // ""' <<<"$input")"
     # 現在時刻の取得だけを許可する（例: date +%s）。; | & $ ` などは通さない。
     date_only='^date( [-+%A-Za-z0-9:_.]+)*$'
-    [[ "$command_value" =~ $date_only ]] && allow "dashboard-builder の時刻取得"
-    deny "dashboard-builder が実行できる Bash は date だけです。"
+    [[ "$command_value" =~ $date_only ]] && allow "ダッシュボードの時刻取得"
+    deny "ダッシュボードのエージェントが実行できる Bash は date だけです。"
     ;;
   Read|Write|Edit)
     [ -n "$cwd" ] || deny "作業ディレクトリを判定できません。"
     path="$(jq -r '.tool_input.file_path // ""' <<<"$input")"
     [ -n "$path" ] || deny "対象パスがありません。"
     target="$(realpath_of "$path")"
-    if is_under "$target" "$(realpath_of "$HOME/.claude/nuu/dashboards")" \
-      || is_under "$target" "$(realpath_of "$HOME/.claude/agent-memory/dashboard-builder")"; then
-      allow "dashboard-builder のダッシュボードとメモリ"
-    fi
-    # リンク元ではなく、このスクリプトの実体があるリポジトリから impeccable の場所を求める。
-    repo_dir="$(dirname "$(dirname "$(realpath_of "${BASH_SOURCE[0]}")")")"
-    if [[ "$tool" == Read ]] \
-      && is_under "$target" "$repo_dir/vendor/impeccable/plugin/skills/impeccable"; then
-      allow "dashboard-builder が参照する impeccable"
-    fi
-    deny "dashboard-builder は ~/.claude/nuu/dashboards/ と自分のメモリ以外を読み書きできません: $path"
+    dashboards="$(realpath_of "$HOME/.claude/nuu/dashboards")"
+    is_under "$target" "$dashboards" \
+      || deny "ダッシュボードのエージェントは ~/.claude/nuu/dashboards/ 以外を読み書きできません: $path"
+    relative="${target#"$dashboards"/}"
+    [[ "$relative" == _client || "$relative" == _client/* ]] \
+      && deny "_client は固定クライアントの置き場所なので、読み書きできません: $path"
+    [[ "$tool" == Read ]] && allow "ダッシュボードの読み取り"
+    [[ "$relative" == prefs.data.js ]] && allow "好みのスタイルの書き込み"
+    task_data='^[^/.][^/]*/[^/.][^/]*\.data\.js$'
+    [[ "$relative" =~ $task_data ]] && allow "作業のデータの書き込み"
+    deny "書けるのは、作業のデータ（~/.claude/nuu/dashboards/<プロジェクト名>/<開始日時>-<作業名>.data.js）と好み（~/.claude/nuu/dashboards/prefs.data.js）だけです。スタブ（.html）、一覧のデータ（index.data.js）、トークン量（.usage.js）はフックが書きます: $path"
     ;;
 esac

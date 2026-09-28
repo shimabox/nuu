@@ -309,10 +309,9 @@ check '再開したら進行中に戻す' rules_have '再開したら、進行�
 
 echo '== ガード =='
 
-mkdir -p "$(dirname "$GUARD_LINK")" "$DASH_DIR/project" "$IMPECCABLE_DIR/reference"
-ln -s "$IMPECCABLE_DIR" "$IMPECCABLE_LINK"
+mkdir -p "$(dirname "$GUARD_LINK")" "$DASH_DIR/project" "$MEMORY_DIR"
 ln -s "$REPO/hooks/dashboard-guard.sh" "$GUARD_LINK"
-printf 'skill\n' >"$IMPECCABLE_DIR/SKILL.md"
+ln -s "$REPO/client" "$DASH_DIR/_client"
 ln -s /etc/hosts "$DASH_DIR/outside"
 
 guard_decision() {
@@ -352,15 +351,32 @@ command_input() {
   jq -n --arg command "$1" '{command: $command}'
 }
 
-expect_guard allow 'ダッシュボードに書ける' Write "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.html")"
-expect_guard allow '一覧を ~ 付きのパスで編集できる' Edit "$(file_input '~/.claude/nuu/dashboards/index.html')"
-expect_guard allow 'ダッシュボードを読める' Read "$(file_input "$DASH_DIR/index.html")"
-expect_guard allow '自分のメモリを読める' Read "$(file_input "$MEMORY_DIR/MEMORY.md")"
-expect_guard allow '自分のメモリに ~ 付きのパスで書ける' Write "$(file_input '~/.claude/agent-memory/dashboard-builder/style.md')"
-expect_guard allow 'impeccable を読める' Read "$(file_input "$IMPECCABLE_DIR/SKILL.md")"
-expect_guard allow 'impeccable を ~/.claude/nuu/impeccable のリンク経由で読める' Read "$(file_input '~/.claude/nuu/impeccable/SKILL.md')"
-expect_guard deny 'impeccable にリンク経由でも書けない' Write "$(file_input "$IMPECCABLE_LINK/SKILL.md")"
-expect_guard deny 'impeccable には書けない' Write "$(file_input "$IMPECCABLE_DIR/SKILL.md")"
+expect_guard allow '作業のデータを書ける' Write "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.data.js")"
+expect_guard allow '作業のデータを ~ 付きのパスで編集できる' Edit "$(file_input '~/.claude/nuu/dashboards/project/2026-09-27-1043-task.data.js')"
+expect_guard allow '好みを書ける' Write "$(file_input "$DASH_DIR/prefs.data.js")"
+expect_guard allow '好みを ~ 付きのパスで編集できる' Edit "$(file_input '~/.claude/nuu/dashboards/prefs.data.js')"
+expect_guard allow 'スタブを読める（できたかを確かめる）' Read "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.html")"
+expect_guard allow '一覧のデータを読める' Read "$(file_input "$DASH_DIR/index.data.js")"
+expect_guard allow '好みを読める' Read "$(file_input '~/.claude/nuu/dashboards/prefs.data.js')"
+expect_guard deny '作業のスタブ（.html）には書けない' Write "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.html")"
+expect_guard deny '一覧のスタブ（index.html）は編集できない' Edit "$(file_input '~/.claude/nuu/dashboards/index.html')"
+expect_guard deny '一覧のデータには書けない' Write "$(file_input "$DASH_DIR/index.data.js")"
+expect_guard deny '一覧のデータは編集できない' Edit "$(file_input "$DASH_DIR/index.data.js")"
+expect_guard deny 'トークン量には書けない' Write "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.usage.js")"
+expect_guard deny 'トークン量は編集できない' Edit "$(file_input "$DASH_DIR/project/2026-09-27-1043-task.usage.js")"
+expect_guard deny '一覧のロックには書けない' Write "$(file_input "$DASH_DIR/.index.lock")"
+expect_guard deny 'ダッシュボードの直下に作業のデータは書けない' Write "$(file_input "$DASH_DIR/2026-09-27-1043-task.data.js")"
+expect_guard deny 'プロジェクトの下のフォルダーには書けない' Write "$(file_input "$DASH_DIR/project/sub/2026-09-27-1043-task.data.js")"
+expect_guard deny '隠しファイルのデータには書けない' Write "$(file_input "$DASH_DIR/project/.task.data.js")"
+expect_guard deny '固定クライアントには書けない' Write "$(file_input "$DASH_DIR/_client/nuu.js")"
+expect_guard deny '固定クライアントは読めない（リポジトリの中）' Read "$(file_input "$DASH_DIR/_client/nuu.js")"
+expect_guard deny '_client の中に作業のデータは書けない' Write "$(file_input "$DASH_DIR/_client/2026-09-27-1043-task.data.js")"
+rm "$DASH_DIR/_client"
+mkdir -p "$DASH_DIR/_client"
+expect_guard deny '_client が実体のフォルダーでも作業のデータは書けない' Write "$(file_input "$DASH_DIR/_client/2026-09-27-1043-task.data.js")"
+rmdir "$DASH_DIR/_client"
+expect_guard deny '自分のメモリは読めない（メモリは使わない）' Read "$(file_input "$MEMORY_DIR/MEMORY.md")"
+expect_guard deny 'メモリには書けない' Write "$(file_input '~/.claude/agent-memory/dashboard-builder/style.md')"
 expect_guard deny '作業ディレクトリには書けない' Write "$(file_input "$WORK_DIR/.claude-progress/index.html")"
 expect_guard deny '作業ディレクトリのファイルは相対パスでも読めない' Read "$(file_input README.md)"
 expect_guard deny '../ でダッシュボードの外に出られない' Read "$(file_input "$DASH_DIR/../../settings.json")"
@@ -430,8 +446,9 @@ expect_usage() {
   fi
 }
 
-check '作業ごとのダッシュボードを書いたら集計が成功する' run_usage Write "$DASH_DIR/project/task.html"
-check '集計結果をダッシュボードと同じフォルダーに書く' test -f "$DASH_DIR/project/task.usage.js"
+check '作業のデータを書いたら集計が成功する' run_usage Write "$DASH_DIR/project/task.data.js"
+check '集計結果をデータと同じフォルダーに書く' test -f "$DASH_DIR/project/task.usage.js"
+check 'データファイル用に別のトークン量は作らない' test ! -e "$DASH_DIR/project/task.data.usage.js"
 check '作業ごとのキーで書く' grep -qF '["project/task"]' "$DASH_DIR/project/task.usage.js"
 expect_usage '用意を始めた時刻から数える' '.since | todate' 2026-09-27T02:00:00Z
 expect_usage '同じ応答は最大値で 1 回だけ数える' '.byCategory.main.total' 1160
@@ -446,27 +463,26 @@ expect_usage '作業ディレクトリを書く' '.cwd' "/work/it's here"
 
 log_line 2026-09-27T02:00:20.000Z main-2 5 5 0 0 >>"$MAIN_LOG"
 rm "$SESSION/subagents/agent-setup.jsonl"
-check '2 回目の集計が成功する' run_usage Edit "$DASH_DIR/project/task.html"
+check '2 回目の集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
 expect_usage '2 回目も用意を始めた時刻を保つ' '.since | todate' 2026-09-27T02:00:00Z
 expect_usage '2 回目は増えた分を足す' '.byCategory.main.total' 1170
 
-check '一覧を書いても成功する' run_usage Write "$DASH_DIR/index.html"
+check '一覧のデータを書いても成功する' run_usage Write "$DASH_DIR/index.data.js"
 check '一覧のトークン量は作らない' test ! -e "$DASH_DIR/index.usage.js"
-check 'メモリを書いても成功する' run_usage Write "$MEMORY_DIR/style.md"
-check 'メモリのトークン量は作らない' test ! -e "$MEMORY_DIR/style.usage.js"
+check '好みを書いても成功する' run_usage Write "$DASH_DIR/prefs.data.js"
+check '好みのトークン量は作らない' test ! -e "$DASH_DIR/prefs.usage.js"
 check '壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$USAGE_LINK"
 
 log_line 2026-09-27T02:00:30.000Z update-1 4 6 0 0 >"$SESSION/subagents/agent-updater.jsonl"
 printf '{"agentType":"dashboard-updater"}\n' >"$SESSION/subagents/agent-updater.meta.json"
-check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.html"
+check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
 expect_usage 'updater の分もダッシュボードに数える' '.byCategory.dashboard.total' 10
 
 log_line 2026-09-27T02:00:40.000Z update-2 1 1 0 0 >>"$SESSION/subagents/agent-updater.jsonl"
-check 'データファイルの書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
-expect_usage 'データファイルの書き込みでも同じ作業に数える' '.byCategory.dashboard.total' 12
-check 'データファイル用に別のトークン量は作らない' test ! -e "$DASH_DIR/project/task.data.usage.js"
-check '一覧のデータファイルを書いても成功する' run_usage Edit "$DASH_DIR/index.data.js"
-check '一覧のデータファイルではトークン量を作らない' test ! -e "$DASH_DIR/index.usage.js"
+check 'スタブ（.html）の書き込みでも失敗しない' run_usage Write "$DASH_DIR/project/task.html"
+expect_usage 'スタブ（.html）の書き込みでは集計しない' '.byCategory.dashboard.total' 10
+check 'もう一度データを書いたら集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
+expect_usage 'データを書けば増えた分を数える' '.byCategory.dashboard.total' 12
 
 echo '== データの確認 =='
 
