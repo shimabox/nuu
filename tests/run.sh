@@ -235,10 +235,13 @@ rules_have() {
 
 check 'dashboard-builder が使えるときだけ適用する' rules_have 'dashboard-builder` サブエージェントが使えるときに適用する'
 check '5 ステップ超か 30 分超の作業で着手前に用意する' rules_have '5 ステップを超える作業、または 30 分を超えそうな作業では、着手前に'
+check '対話なしの実行ではダッシュボードを用意しない' rules_have '`claude -p` のような対話なしの実行では、ダッシュボードを用意しない'
+check '対話なしの実行では更新と完了も行わない' rules_have 'ダッシュボードを用意しない（Claude Code が `~/.claude` の下への書き込みを止めるため）。更新と完了も行わない'
+check '好みを聞けないときの例に対話なしの実行を挙げない' fails rules_have '非対話の実行'
 check '1 ステップごとに更新する' rules_have '1 ステップ終えるごとに'
 check 'NEEDS_STYLE なら利用者に好みを聞く' rules_have 'NEEDS_STYLE` を返したら、AskUserQuestion で'
 check '利用者の答えは「利用者の答え」として渡す' rules_have '答えを「利用者の答え」として渡して呼び直す'
-check '聞けないときは好みを決めず、聞けないことを渡す' rules_have '好みを自分で決めて渡さない。「好みを聞けない」と `dashboard-builder` に渡す'
+check '聞けないときは好みを決めず、聞けないことを渡す' rules_have '好みを利用者に聞けないときは、好みを自分で決めて渡さない。「好みを聞けない」と `dashboard-builder` に渡す'
 check '聞けないときは何も保存せず既定の見た目にする' rules_have '何も保存せず、ダッシュボードは既定の見た目で表示される'
 check '「今回だけ」の好みはない' fails rules_have '今回だけ'
 check '好みの変更はすべてのダッシュボードにすぐ届く' rules_have '変更は開いているページも含めたすべてのダッシュボードにすぐ届く'
@@ -850,6 +853,26 @@ status=$?
 set -e
 check 'インストールでも知らない引数は終了コード 2 で止まる' test "$status" -eq 2
 check '知らない引数では何もリンクしない' test ! -e "$AGENT_LINK"
+
+echo '== README と説明ページ =='
+
+check '説明ページの画像の width と height が実際の大きさと合う' python3 - "$ROOT/docs" <<'PY'
+import os, re, struct, sys
+docs = sys.argv[1]
+html = open(os.path.join(docs, "index.html"), encoding="utf-8").read()
+found = re.findall(r'<img src="(images/[^"]+\.png)" width="(\d+)" height="(\d+)"', html)
+sizes = {}
+for src, width, height in found:
+    with open(os.path.join(docs, src), "rb") as f:
+        sizes[src] = struct.unpack(">II", f.read(24)[16:24]) == (int(width), int(height))
+sys.exit(0 if len(sizes) == 4 and all(sizes.values()) else 1)
+PY
+for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png; do
+  check "README に ${image} を載せる" grep -qF "docs/images/${image}" "$ROOT/README.md"
+done
+for file in README.md docs/index.html; do
+  check "${file} に取得しなくなった impeccable を書かない" fails grep -qi impeccable "$ROOT/$file"
+done
 
 echo
 if ((failures > 0)); then

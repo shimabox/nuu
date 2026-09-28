@@ -134,7 +134,7 @@ code, pre { font-family: var(--mono); font-size: 0.88em; }
 .diagram .canvas { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
 .diagram svg { width: 100%; min-width: 760px; height: auto; display: block; color: var(--ink); }
 .diagram figcaption { font-size: 14px; color: var(--muted); max-width: 66ch; }
-.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; }
 .part { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 8px; align-content: start; }
 .part .who { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 .part p { color: var(--ink-2); font-size: 15px; }
@@ -224,29 +224,31 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     </div>
     <div class="shots">
       <figure class="shot">
-        <img src="images/dashboard-desktop.png" width="1280" height="1030" alt="作業ごとのダッシュボード。上部に状態、完了した手順、作業に合わせた数値、未回答の質問、止まっているもの、トークン量。その下に質問と止まっているもの、手順のカンバンが並ぶ">
+        <img src="images/dashboard-desktop.png" width="1280" height="2602" alt="作業ごとのダッシュボード。上部に状態、完了した手順、未回答の質問、止まっているもの、トークン量の要約。その下に利用者への質問と止まっているもの、手順のカンバン、作業に合わせて選んだパネル（公開までの流れ、進み具合の棒、応答時間の推移のグラフ、条件の表、ブラウザの確認のマス目、品質のゲート、決めたこと）が並ぶ">
         <figcaption>作業ごとのダッシュボード。架空の通販サイトの作業で作った見本です。</figcaption>
       </figure>
       <figure class="shot phone">
-        <img src="images/dashboard-mobile.png" width="390" height="1000" alt="スマホの幅で表示したダッシュボード。要約、質問、止まっているもの、手順が縦に並ぶ">
+        <img src="images/dashboard-mobile.png" width="390" height="1432" alt="スマホの幅で表示したダッシュボード。要約、利用者への質問、止まっているものが縦に並ぶ">
         <figcaption>スマホの幅では 1 列に並びます。</figcaption>
       </figure>
     </div>
     <ul class="features">
+      <li><b>作業に合わせたパネル</b><span>進み具合の棒、マス目、表、項目と値、文章、推移のグラフ、段階の流れの 7 種類から、作業に合うものを選んで並べます。</span></li>
       <li><b>手順はカンバンで</b><span>未着手、進行中、待ち、停止、完了の列に並びます。頼めばリストにも変えられます。</span></li>
       <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
       <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。</span></li>
       <li><b>作業したセッションに戻る</b><span>セッションの ID と、<code>claude --resume</code> で再開するコマンドを載せます。コピーして、作業した会話に戻れます。</span></li>
       <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
-      <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。HTML を開けばブラウザで見られ、10 秒ごとにデータだけを読み直します。ページごと再読み込みしないので、ちらつかず、スクロール位置もそのままです。パネルの構成を変えたときだけ、1 回読み直します。</span></li>
+      <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。HTML を開けばブラウザで見られ、10 秒ごとにデータだけを読み直します。ページごと再読み込みしないので、ちらつかず、スクロール位置もそのままです。</span></li>
+      <li><b>好みはひとつ</b><span>テーマ、密度、アクセントカラー、タスクの表示を、すべてのダッシュボードで共通に使います。変えると、開いているページにも 10 秒ほどで届きます。</span></li>
     </ul>
     <figure class="shot">
-      <img src="images/index-desktop.png" width="1280" height="370" alt="全プロジェクトの作業の一覧。作業名、セッションの ID の先頭、状態、完了した手順、未回答の質問、止まっているもの、トークン量が 1 行に並ぶ">
+      <img src="images/index-desktop.png" width="1280" height="1291" alt="全プロジェクトの作業を進行中、中断中、完了に分けて並べた一覧。各行に作業名、プロジェクト名、セッションの ID の先頭、状態、完了した手順、未回答の質問、止まっているもの、トークン量が並び、15 分以上更新のない進行中の作業は目立たせる">
       <figcaption>全プロジェクトの作業の一覧。</figcaption>
     </figure>
     <figure class="shot">
-      <img src="images/dashboard-session.png" width="1280" height="360" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く">
+      <img src="images/dashboard-session.png" width="1280" height="398" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く">
       <figcaption>ページの下部にあるセッションの欄。コマンドをコピーして、作業した会話に戻れます。</figcaption>
     </figure>
   </section>
@@ -262,7 +264,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
 
     <figure class="diagram">
       <div class="canvas">
-        <svg viewBox="0 0 1000 470" role="img" aria-label="利用者の依頼を受けた Claude Code が、用意を dashboard-builder に、途中の更新を dashboard-updater に頼む。どちらの書き込みもフックのガードと確認を通り、~/.claude/nuu/dashboards/ に保存され、ブラウザが 10 秒ごとに読み込む。トークン量は会話の記録から集計される。">
+        <svg viewBox="0 0 1000 470" role="img" aria-label="利用者の依頼を受けた Claude Code が、用意を dashboard-builder に、途中の更新を dashboard-updater に頼む。どちらも作業のデータだけを書き、書き込みはフックのガードとデータの確認を通る。フックがページと一覧を作り、~/.claude/nuu/dashboards/ に保存され、ブラウザが固定のクライアントで 10 秒ごとに読み込む。トークン量は会話の記録から集計される。">
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -286,12 +288,12 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
             <!-- builder -->
             <rect x="440" y="60" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
             <text x="545" y="92" text-anchor="middle" font-weight="700" font-family="IBM Plex Mono, monospace">dashboard-builder</text>
-            <text x="545" y="114" text-anchor="middle" font-size="12" fill-opacity="0.75">Opus 5.5・用意と構成の見直し</text>
+            <text x="545" y="114" text-anchor="middle" font-size="12" fill-opacity="0.75">sonnet・パネルを選んでデータを書く</text>
 
             <!-- updater -->
             <rect x="440" y="300" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
             <text x="545" y="332" text-anchor="middle" font-weight="700" font-family="IBM Plex Mono, monospace">dashboard-updater</text>
-            <text x="545" y="354" text-anchor="middle" font-size="12" fill-opacity="0.75">Haiku 4.5・途中の更新と完了</text>
+            <text x="545" y="354" text-anchor="middle" font-size="12" fill-opacity="0.75">haiku・途中の更新と完了</text>
 
             <!-- 会話の記録 -->
             <rect x="440" y="412" width="210" height="44" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="4 4"/>
@@ -300,22 +302,26 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
             <!-- フック -->
             <rect x="700" y="40" width="130" height="360" rx="12" fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="5 5"/>
             <text x="765" y="64" text-anchor="middle" font-size="12" fill-opacity="0.7">フック</text>
-            <rect x="712" y="82" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
-            <text x="765" y="110" text-anchor="middle" font-weight="700">ガード</text>
-            <text x="765" y="130" text-anchor="middle" font-size="11" fill-opacity="0.7">書く前に場所を確認</text>
-            <rect x="712" y="190" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
-            <text x="765" y="218" text-anchor="middle" font-weight="700">JSON の確認</text>
-            <text x="765" y="238" text-anchor="middle" font-size="11" fill-opacity="0.7">壊れたら直させる</text>
-            <rect x="712" y="298" width="106" height="64" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
-            <text x="765" y="326" text-anchor="middle" font-weight="700">トークン集計</text>
-            <text x="765" y="346" text-anchor="middle" font-size="11" fill-opacity="0.7">.usage.js に書く</text>
+            <rect x="712" y="76" width="106" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="102" text-anchor="middle" font-weight="700">ガード</text>
+            <text x="765" y="122" text-anchor="middle" font-size="11" fill-opacity="0.7">書く前に場所を確認</text>
+            <rect x="712" y="160" width="106" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="186" text-anchor="middle" font-weight="700">データの確認</text>
+            <text x="765" y="206" text-anchor="middle" font-size="11" fill-opacity="0.7">壊れたら直させる</text>
+            <rect x="712" y="244" width="106" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="270" text-anchor="middle" font-weight="700">ページと一覧</text>
+            <text x="765" y="290" text-anchor="middle" font-size="11" fill-opacity="0.7">データから作る</text>
+            <rect x="712" y="328" width="106" height="60" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+            <text x="765" y="354" text-anchor="middle" font-weight="700">トークン集計</text>
+            <text x="765" y="374" text-anchor="middle" font-size="11" fill-opacity="0.7">.usage.js に書く</text>
 
             <!-- ダッシュボード -->
             <rect x="870" y="150" width="112" height="120" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.6" stroke-width="1.5"/>
-            <text x="926" y="186" text-anchor="middle" font-weight="700">ダッシュボード</text>
-            <text x="926" y="208" text-anchor="middle" font-size="11" fill-opacity="0.7">作業ごとの HTML</text>
-            <text x="926" y="226" text-anchor="middle" font-size="11" fill-opacity="0.7">全体の一覧</text>
-            <text x="926" y="252" text-anchor="middle" font-size="10" fill-opacity="0.6" font-family="IBM Plex Mono, monospace">~/.claude/nuu/</text>
+            <text x="926" y="180" text-anchor="middle" font-weight="700">ダッシュボード</text>
+            <text x="926" y="200" text-anchor="middle" font-size="11" fill-opacity="0.7">作業のデータ</text>
+            <text x="926" y="218" text-anchor="middle" font-size="11" fill-opacity="0.7">ページと一覧</text>
+            <text x="926" y="236" text-anchor="middle" font-size="11" fill-opacity="0.7">固定のクライアント</text>
+            <text x="926" y="258" text-anchor="middle" font-size="10" fill-opacity="0.6" font-family="IBM Plex Mono, monospace">~/.claude/nuu/</text>
 
             <!-- ブラウザ -->
             <rect x="870" y="330" width="112" height="64" rx="10" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
@@ -343,13 +349,13 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
             <text x="556" y="226" fill-opacity="0.75">収まらない変化は回す</text>
 
             <!-- builder / updater → フック -->
-            <line x1="650" y1="99" x2="708" y2="112" stroke="currentColor" marker-end="url(#arrow)"/>
-            <line x1="650" y1="339" x2="708" y2="226" stroke="currentColor" marker-end="url(#arrow)"/>
+            <line x1="650" y1="99" x2="708" y2="106" stroke="currentColor" marker-end="url(#arrow)"/>
+            <line x1="650" y1="339" x2="708" y2="190" stroke="currentColor" marker-end="url(#arrow)"/>
             <text x="676" y="92" text-anchor="middle">書く</text>
 
             <!-- 会話の記録 → 集計 -->
-            <line x1="650" y1="432" x2="708" y2="342" stroke="currentColor" stroke-opacity="0.55" marker-end="url(#arrow)"/>
-            <text x="684" y="408" text-anchor="middle" fill-opacity="0.75">読む</text>
+            <line x1="650" y1="432" x2="708" y2="364" stroke="currentColor" stroke-opacity="0.55" marker-end="url(#arrow)"/>
+            <text x="684" y="418" text-anchor="middle" fill-opacity="0.75">読む</text>
 
             <!-- フック → ダッシュボード -->
             <line x1="830" y1="210" x2="866" y2="210" stroke="currentColor" marker-end="url(#arrow)"/>
@@ -359,24 +365,29 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
           </g>
         </svg>
       </div>
-      <figcaption>用意は完了を待ち、途中の更新は待たずに作業を続けます。どちらの書き込みも、フックのガードと JSON の確認を通って、決まった場所に保存されます。</figcaption>
+      <figcaption>用意は完了を待ち、途中の更新は待たずに作業を続けます。サブエージェントが書くのは作業のデータだけで、書き込みはフックのガードとデータの確認を通ります。ページのファイルと一覧はフックのスクリプトが作ります。</figcaption>
     </figure>
 
     <div class="parts">
       <div class="part">
-        <span class="who">dashboard-builder・Opus 5.5</span>
+        <span class="who">dashboard-builder・sonnet</span>
         <h3>作業に合わせて、1 枚目を作る</h3>
-        <p>作業の性質を見て、載せるパネルと並びを決めます。テンプレートは使いません。初回だけ、好みのテーマ、密度、アクセントカラーを聞き、以降はその好みで作ります。</p>
+        <p>作業の性質を見て、7 種類のパネルから載せるものと並びと中身を選び、作業のデータを書きます。HTML は書きません。初回だけ、好みのテーマ、密度、アクセントカラーを聞き、すべてのダッシュボードに使います。</p>
       </div>
       <div class="part">
-        <span class="who">dashboard-updater・Haiku 4.5</span>
+        <span class="who">dashboard-updater・haiku</span>
         <h3>途中の更新は、軽く速く</h3>
-        <p>回数の多い途中の更新は、軽いモデルに任せます。ページの見た目には触れず、HTML と同じフォルダーのデータファイルだけを書き換えます。今の構成に収まらない変化は、builder に回します。</p>
+        <p>回数の多い途中の更新は、軽いモデルに任せます。作業のデータファイルだけを書き換え、パネルの構成と一覧には触れません。今のパネルに収まらない変化は、builder に回します。</p>
       </div>
       <div class="part">
         <span class="who">フック</span>
         <h3>書き込みを、スクリプトで確かめる</h3>
-        <p>ガードが読み書きできる場所を絞り、書いた直後に JSON が正しいかを確かめます。トークン量は、Claude Code の会話の記録からスクリプトが集計します。セッションの ID と作業ディレクトリも、フックに渡された値をスクリプトが書きます。</p>
+        <p>ガードが読み書きできる場所を絞り、書いた直後にデータが決まった形かを確かめます。作業ごとのページのファイルと一覧のデータは、すべての作業のデータからスクリプトが作ります。トークン量は、Claude Code の会話の記録からスクリプトが集計します。セッションの ID と作業ディレクトリも、フックに渡された値をスクリプトが書きます。</p>
+      </div>
+      <div class="part">
+        <span class="who">client/</span>
+        <h3>見た目と動きは、リポジトリに置く</h3>
+        <p>ページの見た目と動きは、リポジトリの <code>client/</code> にある固定の HTML、CSS、JavaScript が受け持ちます。すべてのページがリンク越しに同じファイルを読むので、<code>git pull</code> すれば、前に作ったダッシュボードも開き直したときに新しい動きになります。</p>
       </div>
     </div>
   </section>
@@ -388,7 +399,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     </div>
     <ol class="flow">
       <li><span class="n">1</span><div class="body"><h3>長い作業を頼む</h3><p>5 ステップを超える作業や、30 分を超えそうな作業だと判断されると、作業の前にダッシュボードが用意されます。確実に使いたいときは「ダッシュボードを用意してから進めて」と頼みます。</p></div></li>
-      <li><span class="n">2</span><div class="body"><span class="tag wait">待つ・2〜3 分</span><h3>ダッシュボードを用意する</h3><p>builder が作業ごとの HTML を作り、全体の一覧に行を足します。Claude Code は、2 つのファイルの場所を伝えます。</p></div></li>
+      <li><span class="n">2</span><div class="body"><span class="tag wait">待つ・30 秒ほど</span><h3>ダッシュボードを用意する</h3><p>builder が作業のデータを書くと、フックが作業ごとのページを置き、全体の一覧に行を足します。Claude Code は、2 つのページの場所を伝えます。</p></div></li>
       <li><span class="n">3</span><div class="body"><span class="tag go">待たない</span><h3>手順ごとに更新する</h3><p>手順を 1 つ終えるたびに、updater がバックグラウンドで更新します。作業は更新を待たずに進み、前の更新が終わっていなければ、次の変化とまとめて渡します。</p></div></li>
       <li><span class="n">4</span><div class="body"><span class="tag go">止まらない</span><h3>判断が必要になったら</h3><p>質問と既定の対応をダッシュボードに載せ、既定の対応で作業を続けます。都合のよいときにダッシュボードで質問を確かめ、答えは Claude Code に伝えます。</p></div></li>
       <li><span class="n">5</span><div class="body"><span class="tag stop">承認を待つ</span><h3>取り消せない操作は別</h3><p>削除、push、送信のような取り消せない操作や外部に公開される操作は、既定の対応では進めず、承認を待ちます。その間も、進められるほかの手順があれば続けます。</p></div></li>
@@ -403,11 +414,12 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <h2 id="h-safety">ダッシュボードを書く係は、ほかに何もできない</h2>
     </div>
     <div class="guards">
-      <div class="guard"><h3>読み書きできる場所を絞る</h3><p>ダッシュボードを書く 2 つのサブエージェントが読み書きできるのは、<code>~/.claude/nuu/dashboards/</code> と自身のメモリだけです。コマンドは、時刻を取る <code>date</code> だけを使えます。</p></div>
+      <div class="guard"><h3>読み書きできる場所を絞る</h3><p>ダッシュボードを書く 2 つのサブエージェントが読めるのは <code>~/.claude/nuu/dashboards/</code> だけ、書けるのは作業のデータと好みだけです。ページのファイル、一覧、トークン量はスクリプトが書きます。コマンドは、時刻を取る <code>date</code> だけを使えます。</p></div>
       <div class="guard"><h3>作業ディレクトリには何も作らない</h3><p>ダッシュボードはホームの決まった場所にまとまるので、作業中のリポジトリに余計なファイルが増えません。</p></div>
       <div class="guard"><h3>時刻は実際の時計から</h3><p>記録する時刻は、推測ではなく <code>date</code> で取った値です。更新が 15 分以上止まっていると、ダッシュボードと一覧が知らせます。</p></div>
       <div class="guard"><h3>CLAUDE.md に 1 行を書き込む</h3><p><code>install.sh</code> は <code>~/.claude/CLAUDE.md</code> に、ルールを読み込む 1 行を足します。dotfiles などでシンボリックリンクにしている場合は、リンク先の実体に書き込みます。<code>uninstall.sh</code> は、その 1 行だけを消します。</p></div>
-      <div class="guard"><h3>残る内容に注意</h3><p>ダッシュボードには、作業の概要や質問、成果物のパスがそのまま残ります。スマホなどから見るために外部へ公開するときは、その中身ごと見えることになります。公開の仕組みは、利用者が自分の環境で用意します。</p></div>
+      <div class="guard"><h3>残る内容に注意</h3><p>ダッシュボードには、作業の概要や質問、成果物のパスがそのまま残ります。スマホなどから見るために外部へ公開するときは、その中身ごと見えることになります。公開の仕組みは、利用者が自分の環境で用意します。ページは <code>_client</code>（リポジトリの <code>client/</code> へのリンク）を読むので、公開先でもリンクをたどれるようにします。</p></div>
+      <div class="guard"><h3>対話のセッションで使う</h3><p><code>claude -p</code> のような対話なしの実行では、ダッシュボードを作れません。ガードが許可しても、Claude Code が <code>~/.claude</code> の下への書き込みを止めるためです。auto モード以外の対話のセッションでは、ダッシュボードへの書き込みのたびに確認が出ます。auto モードで使うと、確認なしで進みます。</p></div>
     </div>
   </section>
 
@@ -420,14 +432,14 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <table>
         <thead><tr><th scope="col">場面</th><th scope="col">担当</th><th scope="col">1 回あたり</th><th scope="col">時間</th></tr></thead>
         <tbody>
-          <tr><td>ダッシュボードの用意</td><td><code>dashboard-builder</code>（Opus 5.5）</td><td class="num">約 $0.50</td><td>2〜3 分</td></tr>
-          <tr><td>途中の更新と完了</td><td><code>dashboard-updater</code>（Haiku 4.5）</td><td class="num">約 $0.06</td><td>30 秒〜1 分</td></tr>
+          <tr><td>ダッシュボードの用意</td><td><code>dashboard-builder</code>（sonnet）</td><td class="num">約 $0.07</td><td>30 秒前後</td></tr>
+          <tr><td>途中の更新と完了</td><td><code>dashboard-updater</code>（haiku）</td><td class="num">約 $0.06</td><td>30 秒〜1 分</td></tr>
         </tbody>
       </table>
     </div>
     <div class="prose">
-      <p>8 手順の作業で途中の更新が 8 回あれば、ダッシュボードにかかる料金は合わせて約 $1 です。途中の更新を Opus 5.5 で行うと、1 回あたり約 $0.27 かかりました。</p>
-      <p class="note">2026 年 9 月時点の API の単価で、見本の作業を計算した目安です。契約の形態によっては、料金ではなく使用量の上限に数えられます。トークン量は、会話の記録の都合でサブエージェントの出力が少なめに出ることがあります。</p>
+      <p>用意の目安は、Claude Code 2.1.283 で 3 回測った中央値です。会話の記録の都合で料金が少なめに出ることがあり、多めに見ても 1 回約 $0.13 です。builder は HTML を書かず、データだけを書くので、用意を短く済ませられます。途中の更新はバックグラウンドで行うので、作業はその時間を待ちません。</p>
+      <p class="note">API の単価で計算した目安です。契約の形態によっては、料金ではなく使用量の上限に数えられます。トークン量は、会話の記録の都合でサブエージェントの出力が少なめに出ることがあります。</p>
     </div>
   </section>
 
@@ -435,12 +447,12 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     <div class="section-head">
       <span class="kicker">はじめかた</span>
       <h2 id="h-start">macOS か Linux で、Claude Code と一緒に</h2>
-      <div class="prose"><p>bash、git、jq、python3 が必要です。Claude Code CLI と、デスクトップアプリで開く Code（ローカル）で使えます。クラウドは手元の設定を読まず、Cowork はサブエージェントを読み込まないため、使えません。詳しい手順と、推奨するプラグイン、アンインストールの方法は README にまとめています。</p></div>
+      <div class="prose"><p>bash、jq、python3（clone に git）が必要です。Claude Code CLI と、デスクトップアプリで開く Code（ローカル）で使えます。クラウドは手元の設定を読まず、Cowork はサブエージェントを読み込まないため、使えません。詳しい手順と、アンインストールの方法は README にまとめています。</p></div>
     </div>
     <div class="steps">
       <div class="step">
         <h3>clone して、リンクを張る</h3>
-        <p><code>~/.claude</code> にサブエージェントとフックのリンクを作ります。既存のファイルがあれば、上書きせずに止まります。</p>
+        <p><code>~/.claude</code> にサブエージェント、フック、ページの見た目と動き（<code>client/</code>）のリンクを作ります。git やネットワークは使いません。既存のファイルがあれば、上書きせずに止まります。</p>
         <pre><code>git clone https://github.com/shimabox/nuu.git
 cd nuu
 ./install.sh</code></pre>
@@ -465,7 +477,7 @@ cd nuu
 </main>
 
 <footer>
-  <span>nuu は MIT License です。デザインの指針として読む impeccable は Apache License 2.0 です。</span>
+  <span>nuu は MIT License です。</span>
   <a href="https://github.com/shimabox/nuu">github.com/shimabox/nuu</a>
 </footer>
 
