@@ -156,6 +156,7 @@ check '再開のコマンドは作業ディレクトリに移ってから実行�
 check '作業ディレクトリは単一引用符で囲む' body_has "作業ディレクトリは単一引用符で囲み、中の \`'\` は \`'\\''\` に置き換える"
 check 'セッションの ID と再開のコマンドをコピーできる' body_has 'それぞれにコピーのボタンを付ける'
 check 'コピーに成功したときだけコピーしたと示す' body_has '`navigator.clipboard.writeText` が成功したときだけ「コピーしました」と短く示す'
+check '更新が止まっている警告から再開のコマンドへ移れる' body_has '警告の中に再開のコマンドへのページ内リンク（`<a href="#session">`）を'
 check '一覧ではセッションの ID を短く出す' body_has 'セッションの ID の先頭 8 文字を目立たない色で出す'
 check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
 check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
