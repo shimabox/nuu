@@ -117,114 +117,62 @@ body_has() {
 }
 
 check '名前は dashboard-builder' has_line 'name: dashboard-builder'
-check 'モデルは opus' has_line 'model: opus'
-check 'effort は medium' has_line 'effort: medium'
-check 'メモリはユーザー単位' has_line 'memory: user'
+check 'モデルは sonnet' has_line 'model: sonnet'
+check 'effort は low' has_line 'effort: low'
 check '使えるツールは Read, Write, Edit, Bash だけ' has_line 'tools: Read, Write, Edit, Bash'
-check 'frontend-design をプリロードする' has_line '  - frontend-design:frontend-design'
-check 'design-artifact をプリロードする' has_line '  - plannotator-effective-html:design-artifact'
-check 'dataviz をプリロードする' has_line '  - dataviz'
-check 'impeccable はプリロードしない（全体のスキルとして登録しないため）' \
-  fails grep -q impeccable <<<"$frontmatter"
+check 'メモリを使わない（好みは prefs.data.js に置く）' fails grep -q '^memory:' <<<"$frontmatter"
+check 'デザインのスキルを読み込まない' fails grep -q '^skills:' <<<"$frontmatter"
+check 'impeccable を使わない' fails grep -qi impeccable "$agent"
+check 'builder は途中の更新と完了を updater に任せる' has_line 'description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとのページと、全体の一覧）を用意する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前、好みのスタイルの変更、構成の見直しに使う。途中の更新と完了は dashboard-updater が行う。'
 check 'ガードはファイル操作と Bash にだけ掛ける（報告用の内部ツールを止めない）' \
   has_line '    - matcher: "Read|Write|Edit|Bash"'
 check 'ガードは ~/.claude/hooks のリンクから呼ぶ' \
   has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-guard.sh\\\"\""
-check '作業ごとに ~/.claude/nuu/dashboards/ の下へ 1 ファイル作る' body_has '`~/.claude/nuu/dashboards/<プロジェクト名>/<開始日時>-<作業名>.html`'
-check 'ほかの作業のファイルは上書きしない' body_has 'ほかの作業のファイルは上書きしない'
-check 'update と finish は渡されたパスのファイルだけを更新する' body_has 'update と finish では、呼び出し元から渡されたパスのファイルだけを更新する'
-check 'パスがなければ既存のファイルを推測で選ばない' body_has 'パスが渡されていなければ、推測で既存のファイルを選ばず'
-check 'ダッシュボードを書いたあとにトークン量を集計する' has_line '    - matcher: "Write|Edit"'
-check '集計は ~/.claude/hooks のリンクから呼ぶ' \
+check '書いたあとにフックを動かす' has_line '    - matcher: "Write|Edit"'
+check '書いたあとにデータを確かめる' \
+  has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
+check '書いたあとにスタブと一覧を作る' \
+  has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-page.py\\\"\""
+check '書いたあとにトークン量を集計する' \
   has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
-check 'トークン量のファイルは作らず編集もしない' body_has '`.usage.js` は作らない、編集しない。トークン量を推測して書かない'
-check 'トークン量は作業ごとのキーで読む' body_has 'window.NUU_USAGE["<プロジェクト名>/<作業名>"]'
-check 'トークン量のデータの形を項目名まで示す' body_has '"byCategory": {'
-check '合計は totals.total で読む' body_has '合計 `totals.total`'
-check '内訳は byCategory で読む' body_has '作業本体 `byCategory.main.total`'
-check 'トークン量は上部に合計だけを出す' body_has '上部: 進み具合などの要約の項目の 1 つとして、合計だけを出す'
-check '上部の合計はほかの項目と同じく値を先に出す' body_has '値を大きく（例: 「19.1 万」）、その後ろに薄いラベル「トークン」と下向きの矢印を置く'
-check '上部の合計は項目全体を 1 つのリンクにする' body_has '上部の項目全体を、下部の詳しい表示への 1 つのページ内リンク（`<a href="#usage">`）にする。下線は付けない'
-check '詳しいトークン量はページの一番下に置く' body_has '下部: ページの一番下に `id="usage"` の見出し付きの場所を置き'
-check 'トークン量は目安と注記する' body_has '目安です。サブエージェントの出力トークンは少なめに出ることがあります'
-check '一覧には目安の注記を付けない' body_has '上部と一覧には注記を付けない'
-check '一覧でも作業ごとの合計を表示する' body_has '一覧では、各作業の `.usage.js` を script 要素で読み込み'
-check 'セッションの ID と作業ディレクトリのデータの形を示す' body_has '"sessionId": "'
-check 'セッションの値は .usage.js からだけ取る' body_has '値は `.usage.js` からだけ取る。データファイルに書かない、推測しない'
-check 'セッションはトークン量の直前に置く' body_has '`id="usage"` の場所の直前に、`id="session"` の見出し付きの場所を置き'
-check '再開のコマンドは作業ディレクトリに移ってから実行する' body_has '`cd <作業ディレクトリ> && claude --resume <セッションの ID>`'
-check '作業ディレクトリは単一引用符で囲む' body_has "作業ディレクトリは単一引用符で囲み、中の \`'\` は \`'\\''\` に置き換える"
-check 'セッションの ID と再開のコマンドをコピーできる' body_has 'それぞれにコピーのボタンを付ける'
-check 'コピーに成功したときだけコピーしたと示す' body_has '`navigator.clipboard.writeText` が成功したときだけ「コピーしました」と短く示す'
-check '更新が止まっている警告から再開のコマンドへ移れる' body_has '警告の中に再開のコマンドへのページ内リンク（`<a href="#session">`）を'
-check '一覧ではセッションの ID を短く出す' body_has 'セッションの ID の先頭 8 文字を目立たない色で出す'
-check '全体の一覧を更新する' body_has '全体の一覧 `~/.claude/nuu/dashboards/index.html` を、setup、update、finish のたびに更新する'
-check '一覧ではこの作業の行だけを変える' body_has 'この作業の行だけを追加・更新する。ほかの作業の行は変えない'
-check '一覧では更新が止まった作業を目立たせる' body_has '進行中なのに 15 分以上更新がない作業は'
-check '一覧は進行中、中断中、完了の順に分ける' body_has '進行中、中断中、完了の順に分けて並べ'
-check '一覧では中断中と完了の作業に止まった警告を出さない' body_has '中断中と完了の作業には出さない'
-check '作業全体の状態は進行中、中断中、完了の 3 つで持つ' body_has '`status` に `active`（進行中）、`paused`（中断中）、`done`（完了）のどれかで持つ'
-check '作業全体の状態は色と文字の両方で見分けられるようにする' body_has '3 つを色と文字の両方で見分けられるように表示し'
-check '知らない状態は進行中として扱う' body_has '知らない値は進行中として扱う'
-check '作業ごとのページでも中断中と完了には止まった警告を出さない' body_has '作業が進行中で、15 分以上更新がなければ目立つ警告を出す。中断中と完了のときは出さない'
-check 'ダッシュボードと一覧に favicon を入れる' body_has '`<head>` に、次の favicon の 1 行を一字も変えずに入れる'
-check 'favicon は説明ページのロゴと同じ' python3 - "$ROOT/agents/dashboard-builder.md" "$ROOT/docs/favicon.svg" <<'PY'
-import re, sys, urllib.parse
-spec, logo = (open(path, encoding="utf-8").read() for path in sys.argv[1:])
-found = re.search(r'<link rel="icon" href="data:image/svg\+xml,([^"]+)">', spec)
-sys.exit(0 if found and urllib.parse.unquote(found.group(1)) == logo.strip().replace('"', "'") else 1)
-PY
+check 'ページ、一覧のデータ、トークン量はフックに任せて書かない' \
+  body_has 'ページ（`.html`）、一覧のデータ（`index.data.js`）、トークン量（`.usage.js`）はフックが作るので、書かない'
+check '作業ごとに ~/.claude/nuu/dashboards/ の下へデータを 1 つ作る' \
+  body_has '作業のデータは `~/.claude/nuu/dashboards/<プロジェクト名>/<開始日時>-<作業名>.data.js` に置く'
+check 'ほかの作業のファイルは上書きしない' body_has 'ほかの作業のファイルは上書きしない'
+check 'プロジェクト名が _client のときは _client-project にする' \
+  body_has '作業ディレクトリの名前が `_client` のときは `_client-project` にする'
+check 'プロジェクト名の先頭の . は外す' body_has '先頭の `.` は外す'
+check 'project と slug をパスに合わせる' body_has '`project` にはプロジェクト名、`slug` にはファイル名から `.data.js` を除いたものを書く'
+check 'update と finish は渡されたパスのデータだけを更新する' body_has '渡されたパスのデータだけを更新する'
+check 'パスがなければ既存のファイルを推測で選ばない' body_has 'パスが渡されていなければ、推測で既存のファイルを選ばず'
+check '好みは全体で 1 つの prefs.data.js に置く' body_has '好みは全体で 1 つの `~/.claude/nuu/dashboards/prefs.data.js` に置く'
+check 'setup では最初に好みを 1 回読む' body_has 'setup では、最初に `prefs.data.js` を 1 回 Read する'
+check '好みがなく、渡されてもいなければ NEEDS_STYLE を返す' \
+  body_has 'ファイルがなく、呼び出し元から好みも「好みを聞けない」も渡されていなければ、何も書かずに次の形式だけを返して終える'
+check '初回に聞く好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
+check 'NEEDS_STYLE ではタスクの表示を聞かない' fails grep -q -- '- taskView' <<<"$body"
+check '利用者の答えは prefs.data.js に書く' body_has '「利用者の答え」として好みが渡されたら、`prefs.data.js` に書いてから続ける'
+check 'タスクの表示の既定はカンバン' body_has 'ファイルもなければ、`taskView` は `kanban` にする'
+check '好みを聞けないときは何も保存しない' body_has '「好みを聞けない」と渡されたら、好みを決めず、何も保存しない'
+check '「今回だけ」の好みはない' fails grep -q '今回だけ' <<<"$body"
+check '色の名前は 16 進に直す' body_has '色の名前（teal など）を渡されたら、近い 16 進の値に直す'
+check '好みの変更は prefs.data.js だけを書き換える' body_has '好みの変更: `prefs.data.js` だけを書き換える'
+check '時刻は date +%s で取得する' body_has '`date +%s` で取った実際の時刻（UNIX 秒）を使う'
+check 'データファイルは決まった呼び出しの間に JSON だけを書く' body_has '1 行目を `window.nuuDashboardData(`、最終行を `);` にし、その間に JSON だけを書く'
+for type in progress grid table keyvalue text trend flow; do
+  check "パネルの種類 ${type} を示す" body_has "| \`${type}\` |"
+done
+check 'state の語彙を示す' body_has '`state` は `todo | doing | waiting | blocked | done | failed`'
+check '収まらない内容は table か text で表す' body_has '7 種に収まらない内容は `table` か `text` で表す'
+check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
+check '手順のカンバンと同じことを別のパネルに書かない' body_has '手順のカンバンと同じことを別のパネルに書かない'
+check '渡されていない進捗や数値は作らない' body_has '呼び出し元から渡されていない進捗や数値は作らない'
+check '確かめるために読み直さない' body_has '確かめるために読み直さない'
+check 'setup でスタブができたかを 1 回確かめる' body_has '同じ名前の `.html` を 1 回 Read して、フックがページを置いたかを確かめる'
+check 'スタブがなければその旨を返す' body_has 'ページ（.html）ができていません'
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
-check 'データは HTML と同じフォルダーのデータファイルに置く' body_has '`<HTML のファイル名から .html を除いたもの>.data.js` に置く'
-check '一覧のデータも別のファイルに置く' body_has '`~/.claude/nuu/dashboards/index.data.js` に置く'
-check 'データファイルは決まった呼び出しの間に JSON だけを書く' body_has '1 行目を `window.nuuDashboardData(`、最終行を `);` にし、その間に JSON だけを書く'
-check '定期的なページの再読み込みはしない' body_has '定期的なページの再読み込みはしない。`<meta http-equiv="refresh">` は使わない'
-check '10 秒ごとにデータファイルだけを読み直す' body_has 'その後は 10 秒ごとに、データファイルを読む script 要素を作って'
-check 'file:// でも読めるよう fetch を使わない' body_has '`fetch` や XMLHttpRequest は使わない'
-check '1 回読めなかっただけでは警告を出さない' body_has '1 回読めなかっただけでは警告を出さない。3 回続けて読めなかったときだけ警告を出し、読めたら消す'
-check '警告の文に「隣の」のような位置の言い方を使わない' body_has '「隣の」のような位置の言い方は使わず'
-check '同じデータなら描き直さない' body_has '前回と同じデータ（`JSON.stringify` の結果が同じ）なら描き直さない'
-check 'データに構成の版を持たせる' body_has 'データの一番上に、構成の版 `"layout": <UNIX 秒>` を置く'
-check 'HTML を書き終えてからデータファイルを書く' body_has 'HTML を書き終えてから、この値を入れたデータファイルを書く'
-check '構成が変わったときだけページを読み直す' body_has '読み直したデータの `layout` がそれと違えば、構成が変わったので `location.reload()` で 1 回だけ読み直す'
-check '構成の変化で読み直すときもスクロール位置を保つ' body_has '再読み込みの前にスクロール位置を sessionStorage に保存し、読み込んだあとに戻す'
-check 'トークン量も 10 秒ごとに読み直す' body_has '`<作業名>.usage.js` をデータファイルと同じ方法で、開いたときと 10 秒ごとに読み直し'
-check '開いたときは script 要素の src でデータファイルを読む' body_has '`<script src="<データファイル名>"></script>` を置いて読む'
-check 'ページの再読み込みの指定を書かない' fails body_has '<meta http-equiv="refresh" content="10">'
-check '時刻は date +%s で取得する' body_has 'date +%s'
-check '好みが未記録なら NEEDS_STYLE を返す' body_has 'NEEDS_STYLE'
-check '初回に聞く好みはテーマ、密度、アクセントカラーの 3 つ' body_has '- theme: dark | light'
-check 'タスクの表示は聞かず、既定はカンバン' body_has 'タスクの表示（kanban | list）は NEEDS_STYLE で聞かない。記録がなければ kanban にする'
-check 'カンバンでは状態ごとの列にタスクを並べる' body_has 'kanban: 状態ごとの列（未着手 / 進行中 / 待ち / 停止 / 完了）'
-check 'タスクの表示は作業によって変えない' body_has 'タスクの表示だけは好みに従い、作業によって変えない'
-check 'NEEDS_STYLE ではタスクの表示を聞かない' fails grep -q -- '- layout' <<<"$body"
-check '好みの変更を受け取ったら上書きする' body_has '利用者から変更の指示が渡されたら上書きする'
-check '利用者の答えとして渡された好みだけを保存する' body_has '「利用者の答え」としてスタイルが渡されたら、`style.md` に保存し'
-check '今回だけの好みは保存しない' body_has '「今回だけ」としてスタイルが渡されたら、そのダッシュボードにだけ使い、メモリには保存しない'
-check 'どちらか示されていなければ保存しない' body_has '示されていなければ、今回だけとして扱う'
-check 'update と finish では好みを聞き直さない' body_has 'update と finish では NEEDS_STYLE を返さない'
-check '外部の CSS や JavaScript を読み込まない' body_has '外部の CSS、JavaScript、フォント、画像は読み込まない'
-check 'スマホの幅に合わせる viewport を入れる' body_has '<meta name="viewport" content="width=device-width, initial-scale=1">'
-check '幅 360px でも横にはみ出さない' body_has '幅 360px でも、ページ全体が横にはみ出さない'
-check '狭い画面ではカンバンの列を縦に積む' body_has 'カンバンは、狭い画面では列を縦に積む'
-check '狭い画面では質問と止まっているものを一番上に置く' body_has '未回答の質問と止まっているものを一番上に置く'
-check 'ホバーでしか見えない情報を作らない' body_has 'ホバーでしか見えない情報を作らない'
-check 'カードやパネルの中身を枠からはみ出させない' body_has 'カードやパネルの中身は、枠からはみ出させない'
-check '入りきらないラベルと値は縦に積む' body_has 'ラベルと値が横に入りきらないときは縦に積む'
-check '下部のトークン量はラベルの下に値を置く' body_has '下部の各項目は、ラベルの下に値を置く'
-check '狭い画面では表を使わずカードにする' body_has '狭い画面では表を使わない。'
-check '時刻や件数を途中で折り返さない' body_has '時刻、件数、進み具合（3 / 8 など）は途中で折り返さない'
-check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
-for section in 'タスクと状態' '利用者への質問' '最新の成果物' '止まっているもの'; do
-  check "必ず載せる内容に「${section}」がある" body_has "$section"
-done
-check 'impeccable のランチャーは実行しない' body_has 'ランチャー（`scripts/impeccable`）は実行しない'
-check 'impeccable は clone した場所に関係なく ~/.claude/nuu/impeccable から読む' body_has '`~/.claude/nuu/impeccable/`'
-for file in agents/dashboard-builder.md agents/dashboard-updater.md hooks/dashboard-guard.sh hooks/dashboard-usage.py \
-  hooks/dashboard-validate.py install.sh uninstall.sh claude-instructions.md; do
-  check "${file} に利用者固有のパスを書かない" fails grep -qE '/Users/|/home/|shimabox/github' "$REPO/$file"
-done
 
 echo '== 更新専用エージェントの定義 =='
 
@@ -240,37 +188,45 @@ updater_says() {
   grep -qF -- "$1" <<<"$updater_body"
 }
 
-check 'builder は途中の更新と完了を updater に任せる' has_line 'description: 長い作業の進捗ダッシュボード（~/.claude/nuu/dashboards/ の作業ごとの HTML と、全体の一覧）を用意する専用エージェント。5 ステップを超える作業や 30 分を超えそうな作業の着手前、好みのスタイルの変更、構成の見直しに使う。途中の更新と完了は dashboard-updater が行う。'
-check 'builder は表示に使うデータをすべて JSON に入れる' body_has '表示に使うデータはすべてデータファイル（`.data.js`）の JSON に入れ、HTML に直接書かない'
-check 'builder も書いたあとに JSON を確かめる' has_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
 check 'updater の名前は dashboard-updater' updater_line 'name: dashboard-updater'
 check 'updater のモデルは haiku' updater_line 'model: haiku'
 check 'updater は Write を使えない' updater_line 'tools: Read, Edit, Bash'
 check 'updater はデザインのスキルを読み込まない' fails grep -q '^skills:' <<<"$updater_frontmatter"
+check 'updater はメモリを使わない' fails grep -q '^memory:' <<<"$updater_frontmatter"
 check 'updater もガードを通す' updater_line '    - matcher: "Read|Write|Edit|Bash"'
-check 'updater は書いたあとに JSON を確かめる' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
+check 'updater は書いたあとにデータを確かめる' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-validate.py\\\"\""
+check 'updater の書き込みでも一覧を作り直す' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-page.py\\\"\""
 check 'updater の分もトークン量を集計する' updater_line "          command: \"\\\"\$HOME/.claude/hooks/dashboard-usage.py\\\"\""
-check 'updater はデータファイルの JSON だけを書き換える' updater_says 'データファイルの `window.nuuDashboardData(` と `);` の間にある JSON だけを Edit で書き換える'
-check 'updater は HTML を読まない' updater_says 'HTML は読まない'
-check 'updater は構成の版を変えない' updater_says '構成の版 `layout` は変えない'
-check 'updater は一覧のデータファイルを更新する' updater_says '全体の一覧のデータ（`~/.claude/nuu/dashboards/index.data.js`）のうち'
-check 'updater は最初に 1 回ずつ読み、読み直さない' updater_says '最初に 1 回ずつ Read する。読み直さない'
-check 'updater は JSON の確認をフックに任せる' updater_says '書き換えたあとの JSON は、フックが確かめる'
-check 'updater は回答の内容と時刻を残す' updater_says '回答の内容 `answer` と回答した時刻 `answeredAt` を残す'
-check 'updater は一覧のこの作業の行だけを変える' updater_says 'この作業の行（`href` がこのダッシュボードを指す行）だけを更新する'
+check 'updater はデータファイルの JSON だけを書き換える' updater_says '`window.nuuDashboardData(` と `);` の間にある JSON だけを Edit で書き換える'
+check 'updater は最初に 1 回だけ読み、読み直さない' updater_says 'データファイルを最初に 1 回 Read する。読み直さない'
+check 'updater は HTML、一覧、好みを読まない' updater_says '`.html`、一覧、好みは読まない'
+check 'updater は一覧を読み書きしない' updater_says '一覧はフックが作業のデータから作るので、読まない、書かない'
+check 'updater はパネルの足し引きをしない' updater_says 'パネルの足し引きと、種類・`id`・並びの変更はしない'
+check 'updater は既存の trend に点を足す' updater_says '既存の系列の `points` の末尾に'
+check 'updater は trend の点が上限を超えたら古い点から落とす' updater_says '点が 50 個を超えたら、古い点（先頭）から落として 50 個にする'
+check 'updater は書き換えるたびに updatedAt を取り直す' updater_says '書き換えるたびに `updatedAt` をその時刻にする'
+check 'updater は回答の内容と時刻を残す' updater_says '回答の内容 `answer` と回答した時刻 `answeredAt` を足す'
 check 'updater はパスがなければ推測しない' updater_says '何もせずに「パスが必要です」と返す'
 check 'updater は構成を変えずに builder へ回す' updater_says '何も変えずに「構成の見直しが必要です」と理由を添えて返す'
+check 'updater は JSON の確認をフックに任せる' updater_says '書き換えたあとの JSON は、フックが確かめる'
 check 'updater はトークン量のファイルに触れない' updater_says '`.usage.js` を作らない、編集しない'
-check 'updater は好みやメモリに触れない' updater_says '好みのスタイルやメモリに触れない'
-check 'updater は完了した作業の状態を done にする' updater_says '作業全体の状態 `status` を `done`（完了）にし'
-check 'updater は完了で一覧の行の状態もそろえる' updater_says '一覧のこの作業の行の状態も `done` にそろえる'
-check 'updater は消す作業の行だけを一覧から外す' updater_says 'この作業の行（`href` がこのダッシュボードを指す行）だけを消す。ほかの行は変えない'
-check 'updater は外すときに通常の更新手順を行わない' updater_says 'この操作では、上の「更新のしかた」の手順は行わない。作業のデータファイルは読まず、一覧のデータだけを 1 回 Read し'
-check 'updater は一覧に行がなければ何も変えない' updater_says '一覧にこの作業の行がなければ、何も変えずに「一覧に行がありません」と返す'
-check 'updater は消すときも作業のファイルに触れない' updater_says 'ファイルは呼び出し元が消す'
-check 'updater は途中で止めた作業を中断中にする' updater_says '作業全体の状態 `status` を `paused`（中断中）にする。完了にはしない'
+check 'updater は好みに触れない' updater_says '好みのスタイル（`prefs.data.js`）に触れない'
+check 'updater は完了した作業の状態を done にする' updater_says '`status` を `done`（完了）にし'
+check 'updater は途中で止めた作業を中断中にする' updater_says '`status` を `paused`（中断中）にする。完了にはしない'
 check 'updater は再開した作業を進行中に戻す' updater_says '再開したと渡されたら、`status` を `active`（進行中）に戻す'
-check 'updater は中断と再開で一覧の行の状態もそろえる' updater_says '一覧のこの作業の行の状態を同じ値にそろえる'
+check 'updater は外すときに status を removed にする Edit を 1 回だけ行う' updater_says '`status` を `removed` にする Edit を 1 回だけ行う'
+check 'updater は消すときも作業のファイルに触れない' updater_says 'ファイルは呼び出し元が消す'
+
+for file in agents/dashboard-builder.md agents/dashboard-updater.md; do
+  # 見た目と動きは固定のクライアントが受け持つので、HTML / CSS / JavaScript の書き方を指示しない。
+  check "${file} に HTML / CSS / JavaScript の書き方の指示がない" \
+    fails grep -qE '<(html|head|body|script|meta|link|style|a )|CSS|JavaScript|favicon|viewport|innerHTML|textContent|location\.reload|sessionStorage|setInterval|white-space|fetch|XMLHttpRequest|"layout"' "$REPO/$file"
+done
+for file in agents/dashboard-builder.md agents/dashboard-updater.md hooks/dashboard-guard.sh hooks/dashboard-usage.py \
+  hooks/dashboard-validate.py hooks/dashboard-page.py install.sh uninstall.sh claude-instructions.md \
+  client/task.html client/index.html client/nuu.js client/nuu.css; do
+  check "${file} に利用者固有のパスを書かない" fails grep -qE '/Users/|/home/|shimabox/github' "$REPO/$file"
+done
 
 echo '== CLAUDE.md に追記するルール =='
 
@@ -572,6 +528,41 @@ expect_validate none 'ダッシュボード以外のデータファイルは確�
 expect_validate none 'HTML は確かめない（スタブはフックが置く）' "$DASH_DIR/sample-shop/page.html"
 expect_validate none 'トークン量のファイルは確かめない' "$DASH_DIR/sample-shop/task.usage.js"
 check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$VALIDATE_LINK"
+
+# エージェント定義に載せたデータの例は、そのまま書いても validate を通る。
+# コードブロックのうち、1 行目がデータか好みの呼び出しのものを例として取り出し、決まった置き場所に書く。
+example_count=0
+while IFS=$'\t' read -r name relative; do
+  expect_validate none "エージェント定義の例は通る: ${name} → ${relative}" "$DASH_DIR/$relative" Write
+  example_count=$((example_count + 1))
+done < <(python3 - "$REPO/agents" "$DASH_DIR" <<'PY'
+import json, os, re, sys, textwrap
+agents, dash = sys.argv[1:]
+for name in sorted(os.listdir(agents)):
+    text = open(os.path.join(agents, name), encoding="utf-8").read()
+    for block in re.findall(r"^( *)```[^\n]*\n(.*?)^\1```", text, re.S | re.M):
+        body = textwrap.dedent(block[1])
+        first = body.split("\n", 1)[0]
+        if first == "window.nuuDashboardPrefs(":
+            relative = "prefs.data.js"
+        elif first == "window.nuuDashboardData(":
+            data = json.loads("\n".join(body.rstrip("\n").split("\n")[1:-1]))
+            relative = f"{data['project']}/{data['slug']}.data.js"
+        else:
+            continue
+        os.makedirs(os.path.dirname(os.path.join(dash, relative)), exist_ok=True)
+        with open(os.path.join(dash, relative), "w", encoding="utf-8") as f:
+            f.write(body)
+        print(f"{name}\t{relative}")
+PY
+)
+check 'エージェント定義にデータと好みの例がある' test "$example_count" -ge 2
+check 'builder の例にパネル 7 種がすべて入っている' python3 - "$REPO/agents/dashboard-builder.md" <<'PY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+found = set(re.findall(r'"type": "([a-z]+)"', text))
+sys.exit(0 if {"progress", "grid", "table", "keyvalue", "text", "trend", "flow"} <= found else 1)
+PY
 
 echo '== ページと一覧 =='
 
