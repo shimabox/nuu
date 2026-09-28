@@ -468,8 +468,10 @@ check 'データファイル用に別のトークン量は作らない' test ! -
 check '一覧のデータファイルを書いても成功する' run_usage Edit "$DASH_DIR/index.data.js"
 check '一覧のデータファイルではトークン量を作らない' test ! -e "$DASH_DIR/index.usage.js"
 
-echo '== JSON の確認 =='
+echo '== データの確認 =='
 
+# 正しい例と壊れた例は tests/fixtures に置き、ブラウザのテストと同じものを使う。
+readonly FIXTURES="$ROOT/tests/fixtures"
 ln -s "$REPO/hooks/dashboard-validate.py" "$VALIDATE_LINK"
 
 run_validate() {
@@ -489,47 +491,70 @@ expect_validate() {
   fi
 }
 
-mkdir -p "$DASH_DIR/no-items"
-printf '<html><body>other page</body></html>\n' >"$WORK_DIR/other.html"
-printf 'not html\n' >"$DASH_DIR/project/note.txt"
+# 止めた理由に、決めた文が入っているかを確かめる。
+expect_reason() {
+  local name="$1"
+  local path="$2"
+  local want="$3"
+  local output reason
 
+  output="$(run_validate "$path")"
+  reason="$(jq -r '.reason // empty' <<<"$output")"
+  if [[ "$(jq -r '.decision // empty' <<<"$output")" == block ]] && grep -qF -- "$want" <<<"$reason"; then
+    pass "$name"
+  else
+    fail "${name}（期待する理由: ${want}、結果: ${reason:-止めなかった}）"
+  fi
+}
+
+# 置き場所ごとに意味が決まるので、fixtures の相対パスのまま ~/.claude/nuu/dashboards/ へ写す。
+place_fixture() {
+  mkdir -p "$(dirname "$DASH_DIR/$2")"
+  cp "$1" "$DASH_DIR/$2"
+}
+
+valid_count=0
+while IFS= read -r file; do
+  relative="${file#"$FIXTURES/valid/"}"
+  place_fixture "$file" "$relative"
+  expect_validate none "正しい例 ${relative} は通る" "$DASH_DIR/$relative" Write
+  valid_count=$((valid_count + 1))
+done < <(find "$FIXTURES/valid" -name '*.data.js' | sort)
+check '正しい例がある' test "$valid_count" -gt 0
+
+invalid_count=0
+while IFS=$'\t' read -r file as reason what; do
+  place_fixture "$FIXTURES/invalid/$file" "$as"
+  expect_reason "壊れた例を理由付きで止める: ${what}（${file}）" "$DASH_DIR/$as" "$reason"
+  invalid_count=$((invalid_count + 1))
+done < <(jq -r '.[] | [.file, .as, .reason, .what] | @tsv' "$FIXTURES/invalid/cases.json")
+check '壊れた例がある' test "$invalid_count" -gt 0
+check '壊れた例のファイルをすべて cases.json に書いている' \
+  test "$(find "$FIXTURES/invalid" -name '*.data.js' | wc -l | tr -d ' ')" -eq "$invalid_count"
+
+readonly SAMPLE="sample-shop/2026-09-28-2252-search-filters.data.js"
 data_file() {
   printf 'window.nuuDashboardData(\n%s\n);\n' "$1"
 }
 
-data_file '{"title": "ok", "tasks": []}' >"$DASH_DIR/project/fresh.data.js"
-data_file '{"title": "broken", "tasks": [}' >"$DASH_DIR/project/broken.data.js"
-printf '{"title": "bare"}\n' >"$DASH_DIR/project/bare.data.js"
-printf '\nwindow.nuuDashboardData(\n{"title": "lead"}\n);\n' >"$DASH_DIR/project/lead.data.js"
-printf 'window.nuuDashboardData(\n{"title": "trail"}\n);\n\n' >"$DASH_DIR/project/trail.data.js"
-data_file '{"items": []}' >"$DASH_DIR/index.data.js"
-data_file '{"rows": []}' >"$DASH_DIR/no-items/index.data.js"
-data_file '{"title": "broken", "tasks": [}' >"$WORK_DIR/other.data.js"
-printf '<html><head><script src="fresh.data.js"></script></head></html>\n' >"$DASH_DIR/project/fresh.html"
-printf '<html><body><p>fresh.data.js が、この HTML と同じフォルダーにあるか確かめてください</p><script>load("fresh.data.js")</script></body></html>\n' >"$DASH_DIR/project/fresh-text-only.html"
-printf '<html><head><script src="fresh.data.js"></script></head></html>\n' >"$DASH_DIR/project/other-name.html"
-printf '<html><head><script data-src="fresh-data-src.data.js"></script></head></html>\n' >"$DASH_DIR/project/fresh-data-src.html"
-printf '<html><head><script src="index.data.js" onerror="warn()"></script></head></html>\n' >"$DASH_DIR/index.html"
-printf 'window.nuuDashboardData(\n{\n\n);\n' >"$DASH_DIR/project/trailing-blank.data.js"
+place_fixture "$FIXTURES/valid/$SAMPLE" "$SAMPLE"
+sed 's/"status": "active"/"status": "running"/; s/"status": "done" },/"status": "finished" },/' \
+  "$FIXTURES/valid/$SAMPLE" >"$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js"
+sed -i.bak 's/"slug": "2026-09-28-2252-search-filters"/"slug": "2026-09-28-2252-two"/' "$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js"
+expect_reason '壊れた箇所が複数あれば 1 回でまとめて返す（1 つ目）' "$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js" 'status: "running"'
+expect_reason '壊れた箇所が複数あれば 1 回でまとめて返す（2 つ目）' "$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js" 'tasks[0].status: "finished"'
+check '理由にどのファイルかを書く' grep -qF "$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js" \
+  <<<"$(run_validate "$DASH_DIR/sample-shop/2026-09-28-2252-two.data.js" | jq -r .reason)"
+printf 'window.nuuDashboardData(\n{}\n);\n\n' >"$DASH_DIR/sample-shop/trail-blank.data.js"
+expect_reason '最終行の後に空行があれば直させる' "$DASH_DIR/sample-shop/trail-blank.data.js" '最終行を );'
 
-expect_validate none 'ダッシュボード以外の HTML は確かめない' "$WORK_DIR/other.html"
-expect_validate none 'HTML 以外は確かめない' "$DASH_DIR/project/note.txt"
-expect_validate none 'Write と Edit 以外は確かめない' "$DASH_DIR/project/broken.data.js" Read
-expect_validate none 'データファイルの JSON が正しければ何も言わない' "$DASH_DIR/project/fresh.data.js" Write
-expect_validate block 'データファイルの JSON が壊れていれば直させる' "$DASH_DIR/project/broken.data.js"
-check 'データファイルの壊れた箇所を知らせる' grep -qF 'データの 1 行目' <<<"$(run_validate "$DASH_DIR/project/broken.data.js" | jq -r .reason)"
-expect_validate block 'データファイルの呼び出しが崩れていれば直させる' "$DASH_DIR/project/bare.data.js"
-expect_validate block '1 行目の前に空行があれば直させる' "$DASH_DIR/project/lead.data.js"
-expect_validate block '最終行の後に空行があれば直させる' "$DASH_DIR/project/trail.data.js"
-expect_validate none '一覧のデータファイルに items があれば何も言わない' "$DASH_DIR/index.data.js"
-expect_validate block '一覧のデータファイルに items がなければ直させる' "$DASH_DIR/no-items/index.data.js"
+data_file '{"broken": [}' >"$WORK_DIR/other.data.js"
+printf '<html><body>page</body></html>\n' >"$DASH_DIR/sample-shop/page.html"
+printf 'broken(\n' >"$DASH_DIR/sample-shop/task.usage.js"
+expect_validate none 'Write と Edit 以外は確かめない' "$DASH_DIR/bad/syntax.data.js" Read
 expect_validate none 'ダッシュボード以外のデータファイルは確かめない' "$WORK_DIR/other.data.js"
-expect_validate none '同じフォルダーのデータファイルを読み込む HTML なら何も言わない' "$DASH_DIR/project/fresh.html"
-expect_validate block 'ファイル名が文にあるだけで script 要素で読み込まない HTML なら直させる' "$DASH_DIR/project/fresh-text-only.html"
-expect_validate block 'ほかの名前のデータファイルを読み込む HTML なら直させる' "$DASH_DIR/project/other-name.html"
-expect_validate block 'src ではなく data-src に書いた HTML なら直させる' "$DASH_DIR/project/fresh-data-src.html"
-expect_validate none '一覧のデータファイルを読み込む一覧なら何も言わない' "$DASH_DIR/index.html"
-expect_validate block 'エラーの行が末尾の空行を指しても直させる' "$DASH_DIR/project/trailing-blank.data.js"
+expect_validate none 'HTML は確かめない（スタブはフックが置く）' "$DASH_DIR/sample-shop/page.html"
+expect_validate none 'トークン量のファイルは確かめない' "$DASH_DIR/sample-shop/task.usage.js"
 check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$VALIDATE_LINK"
 
 echo '== install.sh =='
