@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # nuu の仕様を確認するテスト。
-# 一時ディレクトリにリポジトリを複製し、一時 HOME と偽の git で実行する。
+# 一時ディレクトリにリポジトリを複製し、一時 HOME で実行する。git が呼ばれたら記録する。
 # 実際の ~/.claude やネットワークには触れない。
 #
 # 仕様の確認のため、$ や ~ を含む文字列をそのまま渡す箇所がある。
@@ -52,7 +52,8 @@ fails() {
   ! "$@"
 }
 
-# 複製したリポジトリ、一時 HOME、偽の git を用意する。
+# 複製したリポジトリと一時 HOME を用意する。install.sh が git を呼ばないことを確かめるため、
+# 呼ばれたら記録するだけの git を PATH の先頭に置く。
 mkdir -p "$REPO" "$TEST_HOME" "$WORK_DIR" "$FAKE_BIN"
 cp -R "$ROOT/agents" "$ROOT/client" "$ROOT/hooks" "$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/claude-instructions.md" "$REPO/"
 
@@ -60,10 +61,6 @@ cp -R "$ROOT/agents" "$ROOT/client" "$ROOT/hooks" "$ROOT/install.sh" "$ROOT/unin
 printf '%s\n' \
   '#!/bin/sh' \
   'printf "%s\n" "$*" >>"$FAKE_GIT_LOG"' \
-  'if [ "$1" = clone ]; then' \
-  '  for last in "$@"; do :; done' \
-  '  mkdir -p "$last/.git"' \
-  'fi' \
   >"$FAKE_BIN/git"
 chmod +x "$FAKE_BIN/git"
 
@@ -98,9 +95,9 @@ readonly RULES_LINK="$TEST_HOME/.claude/nuu/claude-instructions.md"
 readonly CLAUDE_MD="$TEST_HOME/.claude/CLAUDE.md"
 readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
 readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
-readonly IMPECCABLE_DIR="$REPO/vendor/impeccable/plugin/skills/impeccable"
-readonly IMPECCABLE_LINK="$TEST_HOME/.claude/nuu/impeccable"
 readonly DASH_DIR="$TEST_HOME/.claude/nuu/dashboards"
+readonly CLIENT_LINK="$DASH_DIR/_client"
+readonly PAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-page.py"
 
 echo '== エージェント定義 =='
 
@@ -569,7 +566,6 @@ PY
 
 echo '== ページと一覧 =='
 
-readonly PAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-page.py"
 readonly INDEX_DATA="$DASH_DIR/index.data.js"
 ln -s "$REPO/hooks/dashboard-page.py" "$PAGE_LINK"
 rm -rf "$DASH_DIR"
@@ -712,78 +708,99 @@ wait "$first"
 wait "$second"
 expect_index '完了順が逆転しても removed にした作業は一覧に戻らない' '[.items[] | select(.project == "sample-app")] | length' 0
 expect_index '並行して動いてもほかの行は残る' '.items | length' 3
+check 'リポジトリの hooks/ に __pycache__ を作らない' test ! -e "$REPO/hooks/__pycache__"
 
 echo '== install.sh =='
 
 rm -rf "$TEST_HOME/.claude" "$REPO/vendor"
 mkdir -p "$TEST_HOME/.claude"
 printf 'keep\n' >"$TEST_HOME/.claude/CLAUDE.md"
+: >"$GIT_LOG"
 
 check 'インストールが成功する' run_install
 check 'エージェント定義をリポジトリへのリンクにする' links_to "$AGENT_LINK" "$REPO/agents/dashboard-builder.md"
-check 'ガードをリポジトリへのリンクにする' links_to "$GUARD_LINK" "$REPO/hooks/dashboard-guard.sh"
-check '集計スクリプトをリポジトリへのリンクにする' links_to "$USAGE_LINK" "$REPO/hooks/dashboard-usage.py"
-check 'JSON の確認スクリプトをリポジトリへのリンクにする' links_to "$VALIDATE_LINK" "$REPO/hooks/dashboard-validate.py"
 check '更新専用エージェントをリポジトリへのリンクにする' links_to "$UPDATER_LINK" "$REPO/agents/dashboard-updater.md"
-check 'impeccable を sparse clone で取得する' \
-  grep -qxF "clone --quiet --filter=blob:none --sparse --no-checkout https://github.com/pbakaus/impeccable.git $REPO/vendor/impeccable" "$GIT_LOG"
-check 'impeccable はスキル部分だけを取り出す' \
-  grep -qxF -- "-C $REPO/vendor/impeccable sparse-checkout set --no-cone /plugin/skills/impeccable/" "$GIT_LOG"
-check 'impeccable は固定した版を使う' \
-  grep -qxF -- "-C $REPO/vendor/impeccable -c advice.detachedHead=false checkout --quiet skill-v4.3.1" "$GIT_LOG"
-check 'impeccable を ~/.claude/nuu/impeccable にリンクする' links_to "$IMPECCABLE_LINK" "$IMPECCABLE_DIR"
-check '2 回目も成功する' run_install
-check '2 回目は固定した版だけを取得する' grep -qxF -- "-C $REPO/vendor/impeccable fetch --quiet origin tag skill-v4.3.1" "$GIT_LOG"
+check 'ガードをリポジトリへのリンクにする' links_to "$GUARD_LINK" "$REPO/hooks/dashboard-guard.sh"
+check 'ページと一覧のフックをリポジトリへのリンクにする' links_to "$PAGE_LINK" "$REPO/hooks/dashboard-page.py"
+check '集計スクリプトをリポジトリへのリンクにする' links_to "$USAGE_LINK" "$REPO/hooks/dashboard-usage.py"
+check 'データの確認スクリプトをリポジトリへのリンクにする' links_to "$VALIDATE_LINK" "$REPO/hooks/dashboard-validate.py"
 check 'ルールのファイルをリポジトリへのリンクにする' links_to "$RULES_LINK" "$REPO/claude-instructions.md"
+check '固定クライアントを dashboards/_client へのリンクにする' links_to "$CLIENT_LINK" "$REPO/client"
+check 'git を呼ばない' test ! -s "$GIT_LOG"
+check 'impeccable を取得しない' test ! -e "$REPO/vendor"
+check 'impeccable へのリンクを作らない' test ! -e "$TEST_HOME/.claude/nuu/impeccable"
+check '2 回目も成功する' run_install
+check '2 回目も git を呼ばない' test ! -s "$GIT_LOG"
 check 'CLAUDE.md にルールを読み込む 1 行を足す' grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
 check 'CLAUDE.md のほかの内容は残す' grep -qxF keep "$CLAUDE_MD"
 check '2 回目は読み込みの 1 行を重ねて足さない' test "$(grep -cxF "$IMPORT_LINE" "$CLAUDE_MD")" -eq 1
+
+# インストールしたフックが置いたスタブから、リンク越しに固定クライアントを読める。
+place_fixture "$FIXTURES/valid/$SAMPLE" "$SAMPLE"
+check 'インストールしたフックでスタブを置ける' run_page "$DASH_DIR/$SAMPLE"
+check 'スタブが読む ../_client/nuu.js がある' test -f "$(dirname "$DASH_DIR/$SAMPLE")/../_client/nuu.js"
+check 'スタブが読む ../_client/nuu.css がある' test -f "$(dirname "$DASH_DIR/$SAMPLE")/../_client/nuu.css"
+check '一覧のスタブが読む _client/nuu.js がある' test -f "$DASH_DIR/_client/nuu.js"
+printf '\n// 新しい版\n' >>"$REPO/client/nuu.js"
+check 'リポジトリの client/ を書き換えると、リンク越しにすぐ新しい中身になる' cmp -s "$REPO/client/nuu.js" "$CLIENT_LINK/nuu.js"
+cp "$ROOT/client/nuu.js" "$REPO/client/nuu.js"
 
 rm "$AGENT_LINK"
 printf 'mine\n' >"$AGENT_LINK"
 check '既存のファイルがあれば失敗する' fails run_install
 check '既存のファイルは上書きしない' grep -qxF mine "$AGENT_LINK"
 rm "$AGENT_LINK"
+rm "$CLIENT_LINK"
+mkdir -p "$CLIENT_LINK"
+printf 'mine\n' >"$CLIENT_LINK/nuu.js"
+check '_client が別のフォルダーなら失敗する' fails run_install
+check '別のフォルダーの _client は上書きしない' grep -qxF mine "$CLIENT_LINK/nuu.js"
+rm -rf "$CLIENT_LINK"
+rm -rf "$DASH_DIR"
 run_install
 
 echo '== uninstall.sh =='
 
-mkdir -p "$MEMORY_DIR"
-printf 'style\n' >"$MEMORY_DIR/style.md"
-
 check 'アンインストールが成功する' run_uninstall
 check 'エージェント定義のリンクを外す' test ! -e "$AGENT_LINK"
-check 'ガードのリンクを外す' test ! -e "$GUARD_LINK"
-check '集計スクリプトのリンクを外す' test ! -e "$USAGE_LINK"
-check 'JSON の確認スクリプトのリンクを外す' test ! -e "$VALIDATE_LINK"
 check '更新専用エージェントのリンクを外す' test ! -e "$UPDATER_LINK"
-check '好みのスタイルは残す' test -f "$MEMORY_DIR/style.md"
-check 'impeccable へのリンクを外す' test ! -e "$IMPECCABLE_LINK"
-check '空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
-check 'impeccable は残す' test -d "$REPO/vendor/impeccable"
+check 'ガードのリンクを外す' test ! -e "$GUARD_LINK"
+check 'ページと一覧のフックのリンクを外す' test ! -e "$PAGE_LINK"
+check '集計スクリプトのリンクを外す' test ! -e "$USAGE_LINK"
+check 'データの確認スクリプトのリンクを外す' test ! -e "$VALIDATE_LINK"
 check 'ルールのファイルのリンクを外す' test ! -e "$RULES_LINK"
+check '固定クライアントのリンクを外す' test ! -L "$CLIENT_LINK"
+check 'リポジトリの client/ は残す' test -f "$REPO/client/nuu.js"
+check '空になった dashboards と ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check 'CLAUDE.md の読み込みの 1 行を外す' fails grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
 check 'CLAUDE.md のほかの内容は残す（アンインストール）' grep -qxF keep "$CLAUDE_MD"
 check 'リンクがなくても成功する' run_uninstall
 
 run_install
 mkdir -p "$DASH_DIR/project"
-printf 'board\n' >"$DASH_DIR/project/task.html"
+printf 'board\n' >"$DASH_DIR/project/task.data.js"
+printf 'prefs\n' >"$DASH_DIR/prefs.data.js"
 check 'ダッシュボードがあってもアンインストールが成功する' run_uninstall
-check 'ダッシュボードは残す' test -f "$DASH_DIR/project/task.html"
+check 'ダッシュボードは残す' test -f "$DASH_DIR/project/task.data.js"
+check '好みのスタイルは残す' test -f "$DASH_DIR/prefs.data.js"
+check 'ダッシュボードがあっても固定クライアントのリンクは外す' test ! -L "$CLIENT_LINK"
 
 run_install
 check '--purge が成功する' run_uninstall --purge
 check '--purge でダッシュボードを消す' test ! -e "$DASH_DIR"
+check '--purge で好みのスタイルも消す' test ! -e "$DASH_DIR/prefs.data.js"
 check '--purge で空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check '--purge でリンクを外す' test ! -e "$AGENT_LINK"
-check '--purge で好みのスタイルを消す' test ! -e "$MEMORY_DIR"
-check '--purge で impeccable を消す' test ! -e "$REPO/vendor/impeccable"
+check '--purge でもリポジトリの client/ は残す' test -f "$REPO/client/nuu.js"
 check '--purge でもリポジトリは残す' test -f "$REPO/agents/dashboard-builder.md"
 
 printf 'mine\n' >"$AGENT_LINK"
+mkdir -p "$CLIENT_LINK"
+printf 'mine\n' >"$CLIENT_LINK/nuu.js"
 check '別のファイルがあっても成功する' run_uninstall
 check '別のファイルは消さない' grep -qxF mine "$AGENT_LINK"
+check '別のフォルダーの _client は消さない' grep -qxF mine "$CLIENT_LINK/nuu.js"
+rm -rf "$DASH_DIR"
 
 set +e
 run_uninstall --unknown

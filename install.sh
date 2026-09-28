@@ -1,17 +1,13 @@
 #!/usr/bin/env bash
-# dashboard-builder を ~/.claude へリンクし、impeccable のスキル部分を vendor/ へ取得する。
+# nuu のサブエージェント、フック、ルールを ~/.claude へリンクし、固定クライアント（client/）を
+# ~/.claude/nuu/dashboards/_client へリンクする。git やネットワークは使わない。
 # ~/.claude/CLAUDE.md には、リンクしたルールを読み込む 1 行を足す。--no-claude-md を付けると足さない。
-# 何度実行してもよい。既存のリンクと読み込みの 1 行はそのままにし、impeccable は IMPECCABLE_REF の版にそろえる。
+# 何度実行してもよい。既存のリンクと読み込みの 1 行はそのままにする。
 
 set -euo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly REPO_DIR
-readonly IMPECCABLE_URL="https://github.com/pbakaus/impeccable.git"
-# 上流の変更で動きが変わらないよう、取得する版を固定する。
-readonly IMPECCABLE_REF="skill-v4.3.1"
-IMPECCABLE_DIR="$REPO_DIR/vendor/impeccable"
-readonly IMPECCABLE_DIR
 readonly CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 # CLAUDE.md に足す 1 行。ルールの本文をコピーせず、リンクしたファイルを読み込ませる。
 readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
@@ -49,22 +45,12 @@ link_one() {
 link_one "$REPO_DIR/agents/dashboard-builder.md" "$HOME/.claude/agents/dashboard-builder.md"
 link_one "$REPO_DIR/agents/dashboard-updater.md" "$HOME/.claude/agents/dashboard-updater.md"
 link_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-guard.sh"
+link_one "$REPO_DIR/hooks/dashboard-page.py" "$HOME/.claude/hooks/dashboard-page.py"
 link_one "$REPO_DIR/hooks/dashboard-usage.py" "$HOME/.claude/hooks/dashboard-usage.py"
 link_one "$REPO_DIR/hooks/dashboard-validate.py" "$HOME/.claude/hooks/dashboard-validate.py"
 link_one "$REPO_DIR/claude-instructions.md" "$HOME/.claude/nuu/claude-instructions.md"
-
-if [[ -d "$IMPECCABLE_DIR/.git" ]]; then
-  git -C "$IMPECCABLE_DIR" fetch --quiet origin tag "$IMPECCABLE_REF"
-else
-  git clone --quiet --filter=blob:none --sparse --no-checkout "$IMPECCABLE_URL" "$IMPECCABLE_DIR"
-fi
-# リポジトリ直下の CLAUDE.md などを取り出さないよう、スキルのフォルダーだけを指定する。
-git -C "$IMPECCABLE_DIR" sparse-checkout set --no-cone /plugin/skills/impeccable/
-git -C "$IMPECCABLE_DIR" -c advice.detachedHead=false checkout --quiet "$IMPECCABLE_REF"
-printf 'OK     impeccable %s\n' "$IMPECCABLE_REF"
-
-# エージェント定義からは、clone した場所に関係なくこのリンクで impeccable を読む。
-link_one "$IMPECCABLE_DIR/plugin/skills/impeccable" "$HOME/.claude/nuu/impeccable"
+# すべての作業のページがこのリンク越しに同じ CSS と JavaScript を読むので、git pull だけで新しい動きになる。
+link_one "$REPO_DIR/client" "$HOME/.claude/nuu/dashboards/_client"
 
 has_import=false
 has_copy=false
