@@ -54,7 +54,7 @@ fails() {
 
 # 複製したリポジトリ、一時 HOME、偽の git を用意する。
 mkdir -p "$REPO" "$TEST_HOME" "$WORK_DIR" "$FAKE_BIN"
-cp -R "$ROOT/agents" "$ROOT/hooks" "$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/claude-instructions.md" "$REPO/"
+cp -R "$ROOT/agents" "$ROOT/client" "$ROOT/hooks" "$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/claude-instructions.md" "$REPO/"
 
 # shellcheck disable=SC2016 # 生成先のスクリプトで展開する。
 printf '%s\n' \
@@ -556,6 +556,152 @@ expect_validate none 'ダッシュボード以外のデータファイルは確�
 expect_validate none 'HTML は確かめない（スタブはフックが置く）' "$DASH_DIR/sample-shop/page.html"
 expect_validate none 'トークン量のファイルは確かめない' "$DASH_DIR/sample-shop/task.usage.js"
 check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$VALIDATE_LINK"
+
+echo '== ページと一覧 =='
+
+readonly PAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-page.py"
+readonly INDEX_DATA="$DASH_DIR/index.data.js"
+ln -s "$REPO/hooks/dashboard-page.py" "$PAGE_LINK"
+rm -rf "$DASH_DIR"
+mkdir -p "$DASH_DIR"
+
+run_page() {
+  jq -n --arg tool "${2:-Write}" --arg path "$1" '{tool_name: $tool, tool_input: {file_path: $path}}' \
+    | HOME="$TEST_HOME" "$PAGE_LINK"
+}
+
+# 一覧のデータの JSON に jq の式を当てる。
+index_of() {
+  sed '1d;$d' "$INDEX_DATA" | jq -r "$1"
+}
+
+expect_index() {
+  local got
+
+  got="$(index_of "$2")"
+  if [[ "$got" == "$3" ]]; then
+    pass "$1"
+  else
+    fail "${1}（期待: ${3}、結果: ${got}）"
+  fi
+}
+
+# fixtures の作業のデータだけを置く（スタブと一覧はフックが作る）。
+place_fixture "$FIXTURES/valid/$SAMPLE" "$SAMPLE"
+check '作業のデータを書いたら成功する' run_page "$DASH_DIR/$SAMPLE"
+check '最初の書き込みで作業のスタブを置く' cmp -s "$REPO/client/task.html" "$DASH_DIR/${SAMPLE%.data.js}.html"
+check '最初の書き込みで一覧のスタブを置く' cmp -s "$REPO/client/index.html" "$DASH_DIR/index.html"
+check '最初の書き込みで一覧のデータを作る' test -f "$INDEX_DATA"
+expect_validate none '作った一覧のデータは validate を通る' "$INDEX_DATA"
+expect_index '一覧に書いた作業の行がある' '.items | map(.href) | join(",")' 'sample-shop/2026-09-28-2252-search-filters.html'
+
+while IFS= read -r file; do
+  relative="${file#"$FIXTURES/valid/"}"
+  [[ "$relative" == */* ]] && place_fixture "$file" "$relative"
+done < <(find "$FIXTURES/valid" -name '*.data.js' | sort)
+check 'ほかの作業を書いても成功する' run_page "$DASH_DIR/sample-app/2026-09-28-1905-login-audit.data.js" Edit
+expect_index '一覧はすべての作業のデータから作る' '.items | length' 5
+check '一覧の行は fixtures の一覧と同じ値になる（数え方がずれない）' python3 - "$INDEX_DATA" "$FIXTURES/valid/index.data.js" <<'PY'
+import json, sys
+made, sample = ({i["href"]: i for i in json.loads("\n".join(open(p, encoding="utf-8").read().split("\n")[1:-2]))["items"]} for p in sys.argv[1:])
+sys.exit(0 if made and all(sample.get(href) == row for href, row in made.items()) else 1)
+PY
+check 'ほかの作業のスタブは置かない（書いた作業だけ）' test ! -e "$DASH_DIR/sample-docs/2026-09-27-1010-api-guide.html"
+
+printf 'old\n' >"$DASH_DIR/${SAMPLE%.data.js}.html"
+printf 'old\n' >"$DASH_DIR/index.html"
+run_page "$DASH_DIR/$SAMPLE" Edit
+check '雛形と違うスタブは置き直す' cmp -s "$REPO/client/task.html" "$DASH_DIR/${SAMPLE%.data.js}.html"
+check '雛形と違う一覧のスタブも置き直す' cmp -s "$REPO/client/index.html" "$DASH_DIR/index.html"
+
+readonly MIN="sample-min/2026-09-28-0900-empty.data.js"
+sed -i.bak 's/"status": "active"/"status": "removed"/' "$DASH_DIR/$MIN"
+rm -f "$DASH_DIR/$MIN.bak"
+run_page "$DASH_DIR/$MIN" Edit
+expect_index 'removed の作業は一覧から外す' '[.items[] | select(.project == "sample-min")] | length' 0
+expect_index 'removed の作業を外してもほかの行は残る' '.items | length' 4
+
+readonly APP="sample-app/2026-09-28-1905-login-audit.data.js"
+app_row="$(index_of '.items[] | select(.project == "sample-app") | tojson')"
+printf 'window.nuuDashboardData(\n{"broken": [}\n);\n' >"$DASH_DIR/$APP"
+check '壊れたデータを書いても成功する' run_page "$DASH_DIR/$APP" Edit
+expect_index '壊れたデータの作業は前の行が残る' '.items[] | select(.project == "sample-app") | tojson' "$app_row"
+expect_index '壊れたデータの作業があってもほかの行は残る' '.items | length' 4
+mkdir -p "$DASH_DIR/sample-new"
+printf 'window.nuuDashboardData(\n{}\n);\n' >"$DASH_DIR/sample-new/2026-09-28-1000-new.data.js"
+run_page "$DASH_DIR/sample-new/2026-09-28-1000-new.data.js"
+expect_index '前の行がない壊れた作業は一覧に載せない' '[.items[] | select(.project == "sample-new")] | length' 0
+check '壊れた作業でもスタブは置く' test -f "$DASH_DIR/sample-new/2026-09-28-1000-new.html"
+rm -rf "$DASH_DIR/sample-new"
+place_fixture "$FIXTURES/valid/$APP" "$APP"
+
+rm -f "$DASH_DIR/index.html"
+place_fixture "$FIXTURES/valid/prefs.data.js" prefs.data.js
+check '好みを書いても成功する' run_page "$DASH_DIR/prefs.data.js"
+check '好みを書いたら一覧のスタブを置く' cmp -s "$REPO/client/index.html" "$DASH_DIR/index.html"
+check '好みのスタブ（prefs.html）は置かない' test ! -e "$DASH_DIR/prefs.html"
+
+rm -f "$INDEX_DATA"
+run_page "$DASH_DIR/$SAMPLE" Read
+check 'Write と Edit 以外では何もしない' test ! -e "$INDEX_DATA"
+run_page "$DASH_DIR/${SAMPLE%.data.js}.usage.js" Write
+check 'トークン量のファイルでは何もしない' test ! -e "$INDEX_DATA"
+run_page "$WORK_DIR/other.data.js"
+check 'ダッシュボードの外のファイルでは何もしない' test ! -e "$INDEX_DATA"
+check '壊れた入力でもページの用意で作業を止めない' bash -c '"$1" <<<"not json" 2>/dev/null' _ "$PAGE_LINK"
+
+# _client は固定クライアントの置き場所なので、作業のフォルダーとして扱わない。
+mkdir -p "$DASH_DIR/_client"
+place_fixture "$FIXTURES/valid/$SAMPLE" "_client/2026-09-28-2252-search-filters.data.js"
+run_page "$DASH_DIR/_client/2026-09-28-2252-search-filters.data.js"
+check '_client の中にはスタブを置かない' test ! -e "$DASH_DIR/_client/2026-09-28-2252-search-filters.html"
+check '_client の中のデータでは一覧を作らない' test ! -e "$INDEX_DATA"
+run_page "$DASH_DIR/$SAMPLE"
+expect_index '_client の中のデータは一覧に載せない' '[.items[] | select(.project == "_client")] | length' 0
+rm -rf "$DASH_DIR/_client"
+
+# ほかのフックがロックを持ったままなら、待つ上限のあと一覧を変えずに終わる。
+readonly LOCK_READY="$TEST_ROOT/lock-ready"
+python3 - "$DASH_DIR/.index.lock" "$LOCK_READY" <<'PY' &
+import fcntl, sys, time
+handle = open(sys.argv[1], "a")
+fcntl.flock(handle, fcntl.LOCK_EX)
+open(sys.argv[2], "w").close()
+time.sleep(15)
+PY
+holder=$!
+for _ in $(seq 100); do [[ -e "$LOCK_READY" ]] && break; sleep 0.1; done
+sed -i.bak 's/"status": "active"/"status": "removed"/' "$DASH_DIR/$APP"
+rm -f "$DASH_DIR/$APP.bak"
+started=$SECONDS
+check 'ロックを取れなくても成功する' run_page "$DASH_DIR/$APP" Edit
+check 'ロックはフックの timeout（10 秒）より前にあきらめる' test $((SECONDS - started)) -lt 9
+expect_index 'ロックを取れなければ一覧を変えない' '[.items[] | select(.project == "sample-app")] | length' 1
+kill "$holder" 2>/dev/null || true
+wait "$holder" 2>/dev/null || true
+
+# 先に始まった走査（A）が、あとから始まった走査（B）より後に終わっても、removed にした作業が戻らない。
+# A は走査のあと、テストが hold を消すまで待つ。ロックがなければ B が先に書き、A の古い結果で上書きされる。
+readonly HOLD="$TEST_ROOT/page-hold"
+place_fixture "$FIXTURES/valid/$APP" "$APP"
+run_page "$DASH_DIR/$APP" Edit
+touch "$HOLD"
+jq -n --arg path "$DASH_DIR/$SAMPLE" '{tool_name: "Edit", tool_input: {file_path: $path}}' \
+  | NUU_DASHBOARD_PAGE_TEST_HOLD="$HOLD" HOME="$TEST_HOME" "$PAGE_LINK" &
+first=$!
+for _ in $(seq 100); do [[ -e "$HOLD.scanned" ]] && break; sleep 0.1; done
+check '先に始まったフックが、作業が進行中の間に走査した' test -e "$HOLD.scanned"
+sed -i.bak 's/"status": "active"/"status": "removed"/' "$DASH_DIR/$APP"
+rm -f "$DASH_DIR/$APP.bak"
+jq -n --arg path "$DASH_DIR/$APP" '{tool_name: "Edit", tool_input: {file_path: $path}}' \
+  | HOME="$TEST_HOME" "$PAGE_LINK" &
+second=$!
+sleep 1
+rm -f "$HOLD"
+wait "$first"
+wait "$second"
+expect_index '完了順が逆転しても removed にした作業は一覧に戻らない' '[.items[] | select(.project == "sample-app")] | length' 0
+expect_index '並行して動いてもほかの行は残る' '.items | length' 3
 
 echo '== install.sh =='
 
