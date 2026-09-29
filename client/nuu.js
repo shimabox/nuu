@@ -112,6 +112,13 @@
     return /^https:\/\/[^\s\/?#]+([\/?#]\S*)?$/.test(text(url)) ? text(url) : null;
   }
 
+  // 合計からキャッシュの読み込みを除いた量（入力 + 出力 + キャッシュの書き込み）。集計前は null。
+  // 応答のたびに会話全体をキャッシュから読み直すので、合計のほとんどはキャッシュの読み込みになり、作業の大きさの実感と合わない。
+  function freshTokens(totals) {
+    if (!isObject(totals) || num(totals.total) === null) return null;
+    return Math.max(0, num(totals.total) - (num(totals.cacheRead) || 0));
+  }
+
   // 作業ディレクトリを単一引用符で囲み、中の ' は '\'' に置き換える。
   function resumeCommand(sessionId, cwd) {
     var command = 'claude --resume ' + sessionId;
@@ -386,12 +393,13 @@
     var tokens = input.tokens === null
       ? [h('span', { class: 'nuu-big nuu-muted', text: '集計前' }), icon('down')]
       : [h('span', { class: 'nuu-big', text: short(input.tokens) }), h('span', { class: 'nuu-unit', text: 'トークン' }), icon('down')];
+    var tokenNote = input.tokens === null ? null : h('span', { class: 'nuu-stat-note', 'data-role': 'token-note', text: 'キャッシュ読み込みを除く' });
     return [
       stat('状態', workBadge(input.status, 'nuu-badge-lg')),
       stat('完了した手順', [h('span', { class: 'nuu-big', text: input.done + ' / ' + input.total })], null, bar(input.done, input.total, 'done')),
       stat('未回答の質問', [h('span', { class: 'nuu-big', 'data-tone': input.questions ? 'waiting' : null, text: input.questions }), h('span', { class: 'nuu-unit', text: '件' })]),
       stat('止まっているもの', [h('span', { class: 'nuu-big', 'data-tone': input.blockers ? 'blocked' : null, text: input.blockers }), h('span', { class: 'nuu-unit', text: '件' })]),
-      stat('トークン量', tokens, { href: '#usage', class: 'nuu-stat nuu-stat-link', 'data-role': 'token-total' })
+      stat('トークン量', tokens, { href: '#usage', class: 'nuu-stat nuu-stat-link', 'data-role': 'token-total' }, tokenNote)
     ];
   }
 
@@ -801,21 +809,25 @@
     return group === 'byCategory' ? (isObject(holder) ? num(holder.total) : null) : num(holder);
   }
 
+  function usageTotal(label, value, role) {
+    return h('div', { class: 'nuu-usage-total' }, [
+      h('span', { class: 'nuu-field-label', text: label }),
+      h('div', { class: 'nuu-usage-values' }, [
+        h('strong', { class: 'nuu-big', 'data-role': role + '-short', text: short(value) }),
+        h('span', { class: 'nuu-unit', text: 'トークン' }),
+        h('span', { class: 'nuu-exact', 'data-role': role + '-exact', text: exact(value) })
+      ])
+    ]);
+  }
+
   function renderUsage(input) {
     var head = sectionHead('トークン量', null);
     if (!isObject(input) || !isObject(input.totals)) return [head, h('p', { class: 'nuu-empty', 'data-role': 'usage-empty', text: '集計前' })];
-    var total = num(input.totals.total) || 0;
     return [
       head,
       h('div', { class: 'nuu-card nuu-usage' }, [
-        h('div', { class: 'nuu-usage-total' }, [
-          h('span', { class: 'nuu-field-label', text: '合計' }),
-          h('div', { class: 'nuu-usage-values' }, [
-            h('strong', { class: 'nuu-big', 'data-role': 'usage-short', text: short(total) }),
-            h('span', { class: 'nuu-unit', text: 'トークン' }),
-            h('span', { class: 'nuu-exact', 'data-role': 'usage-exact', text: exact(total) })
-          ])
-        ]),
+        usageTotal('キャッシュ読み込みを除く', freshTokens(input.totals) || 0, 'usage-fresh'),
+        usageTotal('合計（キャッシュ読み込みを含む）', num(input.totals.total) || 0, 'usage'),
         h('div', { class: 'nuu-usage-groups' }, USAGE_PARTS.map(function (part) {
           return h('div', { class: 'nuu-usage-group' }, [
             h('h3', { class: 'nuu-h3', text: part[0] }),
@@ -857,7 +869,7 @@
         total: tasks.length,
         questions: questions.filter(function (q) { return !isAnswered(q); }).length,
         blockers: blockers.length,
-        tokens: u && isObject(u.totals) ? num(u.totals.total) : null
+        tokens: u ? freshTokens(u.totals) : null
       }, renderStats) || any;
       var reviews = d ? list(d.reviews).filter(isObject) : [];
       any = slot(root, 'reviews', d && reviews, renderReviews) || any;
@@ -928,7 +940,7 @@
   function indexRow(item) {
     var href = itemHref(item);
     var usage = item.usage;
-    var tokens = usage && isObject(usage.totals) ? num(usage.totals.total) : null;
+    var tokens = usage ? freshTokens(usage.totals) : null;
     var session = usage && text(usage.sessionId) ? text(usage.sessionId).slice(0, 8) : null;
     var status = workStatus(item.status);
     var done = num(item.done) || 0;
@@ -996,7 +1008,7 @@
         h('span', { text: WORK[key].label }),
         h('strong', { text: groups[key].length })
       ]);
-    });
+    }).concat([h('p', { class: 'nuu-note nuu-overview-note', 'data-role': 'token-note', text: 'トークン量は、キャッシュの読み込みを除いた量です' })]);
   }
 
   // 一覧のデータ（と作業ごとの .usage.js の値）を受け取り、変わった欄だけを描き直す。

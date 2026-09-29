@@ -38,6 +38,8 @@ for (const density of ['airy', 'dense']) {
     await openAt(page, board.taskUrl(SAMPLE));
     await expect(page.locator('.nuu-panel')).toHaveCount(7);
     await expect(page.locator('[data-role="usage-short"]')).toBeVisible();
+    await expect(page.locator('[data-role="usage-fresh-short"]')).toBeVisible();
+    await expect(page.locator('[data-role="token-note"]')).toBeVisible();
     await expect(page.locator('.nuu-review')).toBeVisible();
     await expectNoOverflow(page);
   });
@@ -47,6 +49,7 @@ for (const density of ['airy', 'dense']) {
     await openAt(page, board.indexUrl());
     await expect(page.locator('.nuu-row [data-role="session-short"]').first()).toBeVisible();
     await expect(page.locator('.nuu-review-more')).toBeVisible();
+    await expect(page.locator('[data-role="token-note"]')).toBeVisible();
     await expectNoOverflow(page);
   });
 }

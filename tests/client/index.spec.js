@@ -16,7 +16,7 @@ const titles = (page, group) => page.locator(`.nuu-group[data-group="${group}"] 
 // 一覧の行のトークン量を読み終えるまで待つ（行ごとの .usage.js は一覧のデータのあとに読む）。
 async function openIndex(page, seconds) {
   await openAt(page, board.indexUrl(), seconds);
-  await expect(page.locator('.nuu-row[data-key="sample-shop/2026-09-28-2252-search-filters"] [data-role="row-tokens"]')).toContainText('96 万');
+  await expect(page.locator('.nuu-row[data-key="sample-shop/2026-09-28-2252-search-filters"] [data-role="row-tokens"]')).toContainText('14.8 万');
 }
 
 test('進行中、中断中、完了の順に分け、それぞれ最終更新が新しい順に並べる', async ({ page }) => {
@@ -52,18 +52,38 @@ test('進行中で 15 分以上更新がない作業だけを目立たせる', a
   await expect(row('sample-shop/2026-09-28-2252-search-filters')).toHaveAttribute('data-stale', '');
 });
 
-test('作業ごとのトークン量とセッションの ID の先頭 8 文字を出す', async ({ page }) => {
+test('作業ごとのトークン量（キャッシュの読み込みを除く）とセッションの ID の先頭 8 文字を出す', async ({ page }) => {
   await openIndex(page);
   const shop = page.locator('.nuu-row[data-key="sample-shop/2026-09-28-2252-search-filters"]');
-  await expect(shop.locator('[data-role="row-tokens"]')).toContainText('96 万');
-  await expect(shop.locator('[data-role="row-tokens"]')).toContainText('959,950');
+  await expect(shop.locator('[data-role="row-tokens"]')).toHaveText('14.8 万147,550');
   await expect(shop.locator('[data-role="session-short"]')).toHaveText('セッション 7c1e4a92');
   const app = page.locator('.nuu-row[data-key="sample-app/2026-09-28-1905-login-audit"]');
-  await expect(app.locator('[data-role="row-tokens"]')).toContainText('33.7 万');
+  await expect(app.locator('[data-role="row-tokens"]')).toHaveText('4.7 万46,500');
   await expect(app.locator('[data-role="session-short"]')).toHaveText('セッション 0f9d2c41');
   const docs = page.locator('.nuu-row[data-key="sample-docs/2026-09-27-1010-api-guide"]');
   await expect(docs.locator('[data-role="row-tokens"]')).toHaveText('集計前');
   await expect(docs.locator('[data-role="session-short"]')).toHaveCount(0);
+});
+
+test('状態ごとの件数の下に、トークン量がキャッシュの読み込みを除いた量だと常に添える', async ({ page }) => {
+  await openIndex(page);
+  const note = page.locator('.nuu-summary-strip [data-role="token-note"]');
+  await expect(note).toHaveText('トークン量は、キャッシュの読み込みを除いた量です');
+  await expect(note).toBeVisible();
+  // 件数の札より下の行に出る。
+  const chip = await page.locator('.nuu-overview').last().boundingBox();
+  const box = await note.boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(chip.y + chip.height);
+});
+
+test('キャッシュの読み込みがない行は合計をそのまま、合計より大きい行は 0 を出す', async ({ page }) => {
+  const shop = 'sample-shop/2026-09-28-2252-search-filters';
+  const app = 'sample-app/2026-09-28-1905-login-audit';
+  board.writeUsage(shop, { since: 1, totals: { input: 18420, output: 64310, cacheWrite: 64820, total: 959950 } });
+  board.writeUsage(app, { since: 1, totals: { input: 0, output: 0, cacheRead: 336501, cacheWrite: 0, total: 336500 } });
+  await openAt(page, board.indexUrl());
+  await expect(page.locator(`.nuu-row[data-key="${shop}"] [data-role="row-tokens"]`)).toHaveText('96 万959,950');
+  await expect(page.locator(`.nuu-row[data-key="${app}"] [data-role="row-tokens"]`)).toHaveText('00');
 });
 
 test('行から作業のページへ移れる。形の違う href はリンクにしない', async ({ page }) => {

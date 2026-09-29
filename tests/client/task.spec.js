@@ -463,6 +463,7 @@ test.describe('トークン量', () => {
     await expect(root(page)).toHaveAttribute('data-usage-state', 'missing');
     await expect(page.locator('[data-role="token-total"]')).toContainText('集計前');
     await expect(page.locator('[data-role="token-total"]')).toHaveAttribute('href', '#usage');
+    await expect(page.locator('[data-role="token-note"]')).toHaveCount(0);
     await expect(page.locator('#usage')).toContainText('集計前');
     await expect(page.locator('#session')).toContainText('集計前');
     await expect(page.locator('.nuu-panel')).toHaveCount(7);
@@ -470,13 +471,54 @@ test.describe('トークン量', () => {
 
   test('大きな数は短く出し、正確な値を 3 桁区切りで添える', async ({ page }) => {
     await openAt(page, board.taskUrl());
-    await expect(page.locator('[data-role="token-total"]')).toContainText('96 万');
     await expect(page.locator('[data-role="usage-short"]')).toHaveText('96 万');
     await expect(page.locator('[data-role="usage-exact"]')).toHaveText('959,950');
     await expect(page.locator('#usage')).toContainText('目安です。サブエージェントの出力トークンは少なめに出ることがあります');
     const formats = await page.evaluate(() => [8500, 10000, 191000, 959950, 1180000, 99999999, 123456789, 0].map(window.NUU.format.short));
     expect(formats).toEqual(['8,500', '1 万', '19.1 万', '96 万', '118 万', '1 億', '1.2 億', '0']);
     expect(await page.evaluate(() => window.NUU.format.exact(1234567))).toBe('1,234,567');
+  });
+
+  test('上部の要約と下部の先頭は、合計からキャッシュの読み込みを除いた値を出し、下部には合計も並べる', async ({ page }) => {
+    await openAt(page, board.taskUrl());
+    const top = page.locator('[data-role="token-total"]');
+    await expect(top.locator('.nuu-big')).toHaveText('14.8 万');
+    await expect(top.locator('[data-role="token-note"]')).toHaveText('キャッシュ読み込みを除く');
+    const labels = page.locator('#usage .nuu-usage-total .nuu-field-label');
+    await expect(labels).toHaveText(['キャッシュ読み込みを除く', '合計（キャッシュ読み込みを含む）']);
+    // 合計は、キャッシュの読み込みを除いた値の下に並べる。
+    const fresh = await page.locator('[data-role="usage-fresh-short"]').boundingBox();
+    const total = await page.locator('[data-role="usage-short"]').boundingBox();
+    expect(total.y).toBeGreaterThanOrEqual(fresh.y + fresh.height);
+    await expect(page.locator('[data-role="usage-fresh-short"]')).toHaveText('14.8 万');
+    await expect(page.locator('[data-role="usage-fresh-exact"]')).toHaveText('147,550');
+    await expect(page.locator('[data-role="usage-short"]')).toHaveText('96 万');
+    await expect(page.locator('[data-role="usage-exact"]')).toHaveText('959,950');
+    // 内訳と種類は今までどおり、キャッシュの読み込みも含めて出す。
+    await expect(page.locator('#usage .nuu-usage-item').filter({ hasText: 'キャッシュ読み込み' })).toContainText('812,400');
+  });
+
+  test('キャッシュの読み込みがないときは合計をそのまま使い、合計より大きいときは 0 にする', async ({ page }) => {
+    const missing = usage();
+    delete missing.totals.cacheRead;
+    board.writeUsage(SAMPLE, missing);
+    await openAt(page, board.taskUrl());
+    await expect(page.locator('[data-role="token-total"] .nuu-big')).toHaveText('96 万');
+    await expect(page.locator('[data-role="usage-fresh-exact"]')).toHaveText('959,950');
+
+    const broken = usage();
+    broken.totals.cacheRead = 'many';
+    board.writeUsage(SAMPLE, broken);
+    await nextPoll(page);
+    await expect(page.locator('[data-role="usage-fresh-exact"]')).toHaveText('959,950');
+
+    const over = usage();
+    over.totals.cacheRead = 1000000;
+    board.writeUsage(SAMPLE, over);
+    await nextPoll(page);
+    await expect(page.locator('[data-role="token-total"] .nuu-big')).toHaveText('0');
+    await expect(page.locator('[data-role="usage-fresh-exact"]')).toHaveText('0');
+    await expect(page.locator('[data-role="usage-exact"]')).toHaveText('959,950');
   });
 
   test('正常な .usage.js の読み直しは成功、構文が壊れた .usage.js は失敗として扱い、表示は前の値のまま', async ({ page }) => {
@@ -495,7 +537,7 @@ test.describe('トークン量', () => {
     await nextPoll(page);
     await expect(root(page)).toHaveAttribute('data-usage-state', 'ok');
     await expect(page.locator('[data-role="usage-short"]')).toHaveText('200 万');
-    await expect(page.locator('[data-role="token-total"]')).toContainText('200 万');
+    await expect(page.locator('[data-role="token-total"]')).toContainText('119 万');
 
     // 同じ内容をもう一度読んでも、入れ替わったので成功として扱う。
     await nextPoll(page);
