@@ -195,7 +195,8 @@ updater_says() {
 }
 
 check 'updater の名前は dashboard-updater' updater_line 'name: dashboard-updater'
-check 'updater のモデルは haiku' updater_line 'model: haiku'
+check 'updater のモデルは sonnet' updater_line 'model: sonnet'
+check 'updater の effort は low' updater_line 'effort: low'
 check 'updater は Write を使えない' updater_line 'tools: Read, Edit, Bash'
 check 'updater はデザインのスキルを読み込まない' fails grep -q '^skills:' <<<"$updater_frontmatter"
 check 'updater はメモリを使わない' fails grep -q '^memory:' <<<"$updater_frontmatter"
@@ -230,6 +231,26 @@ check 'updater は初めての PR / MR で reviews を作る' updater_says 'PR /
 check 'updater も kind を provider に合わせる' updater_says '`kind` は、`github` なら `pr`、`gitlab` なら `mr`'
 check 'updater も PR / MR の url を https:// に限る' updater_says '`url` は `https://` で始まるものだけを書ける'
 check 'updater は PR / MR の上限を守る（20 件、題名 200 字、url 500 字）' updater_says '上限は 20 件、題名 200 字、`url` 500 字'
+check 'updater は要素を初めて足すときに決まった形で書く' updater_says '要素を初めて足すときは、この形のとおりに書く。ここにない項目名と値は作らない'
+check 'updater はまだない種類の要素も推測せずに書く' updater_says '今の JSON にまだない種類の要素（質問、止まっているもの、成果物、PR / MR など）を初めて足すときも、推測せずに「データの形」を見て書く'
+check 'updater は呼び出し元の言葉を決まった語彙に直す' updater_says '決まった語彙（進行中なら `doing`）に直して書く'
+check 'updater に作業のデータの項目を示す' \
+  updater_says '`schema`（`1`）、`project`、`slug`、`title`、`summary`、`status`、`startedAt`、`updatedAt`、`tasks`、`questions`、`blockers`、`artifacts`、`panels` と、省略できる `reviews`'
+check 'updater に作業の status の語彙を示す' updater_says '`status` は `active`（進行中）、`paused`（中断中）、`done`（完了）、`removed`（一覧から外す）'
+check 'updater に手順の status の語彙を示す' updater_says '手順の `status` は `todo | doing | waiting | blocked | done`'
+check 'updater は進行中を doing にする' updater_says '進行中は `doing` にし、`in_progress` などほかの言葉は使わない'
+check 'updater の質問の形に proceeding を含める' updater_says '`proceeding`（既定の対応で進めているか。`true` か `false` で、省略しない）'
+check 'updater の止まっているものの形は what、why、since、next' updater_says '`what`（何が）、`why`（理由）、`since`（止まった時刻）、`next`（次にすること）。4 つとも書く'
+check 'updater の成果物の形は name、ref、at、note' updater_says '`name`、`ref`（パスまたは URL）、`at`、任意の `note`'
+check 'updater に panel の state の語彙を示す' updater_says '`state` は `todo | doing | waiting | blocked | done | failed`'
+check 'builder と updater の手順の status の語彙が同じ' body_has '手順の `status` は `todo | doing | waiting | blocked | done`'
+check 'builder と updater のパネルの中身の表が同じ' python3 - "$agent" "$updater" <<'PY'
+import re, sys
+rows = [[line for line in open(p, encoding="utf-8").read().splitlines() if re.match(r"\| `[a-z]+` \|", line)] for p in sys.argv[1:]]
+sys.exit(0 if len(rows[0]) == 7 and rows[0] == rows[1] else 1)
+PY
+check 'builder は既存の好みをそのまま使ったときは好みに触れない' \
+  body_has '好みに触れるのは、好みを保存したときと変えたときだけにする。既存の `prefs.data.js` をそのまま使ったときは、好みについて書かない'
 
 for file in agents/dashboard-builder.md agents/dashboard-updater.md; do
   # 見た目と動きは固定のクライアントが受け持つので、HTML / CSS / JavaScript の書き方を指示しない。
@@ -287,6 +308,12 @@ check 'PR / MR を作った、状態が変わった、見つけたときに載�
 check 'PR / MR の provider、番号、題名、URL、状態を updater に渡す' \
   rules_have 'provider（github / gitlab）、番号、題名、URL、状態（draft / open / merged / closed）を `dashboard-updater` に渡して載せる'
 check 'setup のときに分かっている PR / MR は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
+check 'updater に渡す手順の状態は決まった語彙で書く' \
+  rules_have '`dashboard-updater` に渡す手順の状態は、todo / doing / waiting / blocked / done の言葉で書く（例: 進行中は doing）'
+check 'builder がパスを返したら好みを聞き直さない' \
+  rules_have '`dashboard-builder` が作業ごとのダッシュボードのパスを返したら、好みは聞き直さない'
+check '好みを聞くのは NEEDS_STYLE のときだけ' \
+  rules_have '好みを利用者に聞くのは、`dashboard-builder` が `NEEDS_STYLE` を返したときだけ'
 
 echo '== ガード =='
 
@@ -557,9 +584,11 @@ check '確認で壊れた入力でも作業を止めない' bash -c '"$1" <<<"no
 # エージェント定義に載せたデータの例は、そのまま書いても validate を通る。
 # コードブロックのうち、1 行目がデータか好みの呼び出しのものを例として取り出し、決まった置き場所に書く。
 example_count=0
+updater_examples=0
 while IFS=$'\t' read -r name relative; do
   expect_validate none "エージェント定義の例は通る: ${name} → ${relative}" "$DASH_DIR/$relative" Write
   example_count=$((example_count + 1))
+  [[ "$name" == dashboard-updater.md ]] && updater_examples=$((updater_examples + 1))
 done < <(python3 - "$REPO/agents" "$DASH_DIR" <<'PY'
 import json, os, re, sys, textwrap
 agents, dash = sys.argv[1:]
@@ -581,12 +610,31 @@ for name in sorted(os.listdir(agents)):
         print(f"{name}\t{relative}")
 PY
 )
-check 'エージェント定義にデータと好みの例がある' test "$example_count" -ge 2
+check 'エージェント定義にデータと好みの例がある' test "$example_count" -ge 3
+check 'updater の定義にもデータの例があり、validate を通る' test "$updater_examples" -eq 1
 check 'builder の例にパネル 7 種がすべて入っている' python3 - "$REPO/agents/dashboard-builder.md" <<'PY'
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
 found = set(re.findall(r'"type": "([a-z]+)"', text))
 sys.exit(0 if {"progress", "grid", "table", "keyvalue", "text", "trend", "flow"} <= found else 1)
+PY
+# updater は要素を初めて足すときに例を見て書くので、要素の種類と任意の項目をすべて例に入れる。
+check 'updater の例に要素の種類、任意の項目、パネル 7 種、手順の状態がすべて入っている' python3 - "$REPO/agents/dashboard-updater.md" <<'PY'
+import json, re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+body = re.search(r"^```\nwindow\.nuuDashboardData\(\n(.*?)\n\);\n```", text, re.S | re.M).group(1)
+data = json.loads(body)
+keys = lambda name: set().union(*(item.keys() for item in data[name]))
+ok = (
+    keys("tasks") == {"id", "title", "status", "note"}
+    and {t["status"] for t in data["tasks"]} == {"todo", "doing", "waiting", "blocked", "done"}
+    and keys("questions") == {"id", "question", "default", "proceeding", "askedAt", "answer", "answeredAt"}
+    and keys("blockers") == {"what", "why", "since", "next"}
+    and keys("artifacts") == {"name", "ref", "at", "note"}
+    and keys("reviews") == {"provider", "kind", "number", "title", "url", "state", "at"}
+    and {p["type"] for p in data["panels"]} == {"progress", "grid", "table", "keyvalue", "text", "trend", "flow"}
+)
+sys.exit(0 if ok else 1)
 PY
 
 echo '== ページと一覧 =='

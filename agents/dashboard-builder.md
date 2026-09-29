@@ -180,4 +180,6 @@ window.nuuDashboardData(
 - 一覧の絶対パス（`~/.claude/nuu/dashboards/index.html`）
 - 今回変えたこと（1〜2 行）
 
+好みに触れるのは、好みを保存したときと変えたときだけにする。既存の `prefs.data.js` をそのまま使ったときは、好みについて書かない。
+
 `NEEDS_STYLE` の場合は、上の形式だけを返す。
