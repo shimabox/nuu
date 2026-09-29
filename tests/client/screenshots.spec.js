@@ -21,6 +21,16 @@ async function band(page, top, bottom, margin = 24) {
   return { x: 0, y, width: box.width, height: Math.ceil(box.bottom + margin) - y };
 }
 
+// ページの上端から、last の欄の下に余白を付けたところまで。余白は next の欄の上端を越えない。
+async function topUntil(page, last, next, margin = 24) {
+  const box = await page.evaluate(([a, b]) => {
+    const end = document.querySelector(a).getBoundingClientRect();
+    const following = document.querySelector(b).getBoundingClientRect();
+    return { bottom: end.bottom + window.scrollY, next: following.top + window.scrollY, width: document.documentElement.clientWidth };
+  }, [last, next]);
+  return { x: 0, y: 0, width: box.width, height: Math.ceil(Math.min(box.bottom + margin, box.next)) };
+}
+
 test.describe('説明ページの画像', () => {
   test.skip(!process.env.NUU_DOCS_IMAGES, 'NUU_DOCS_IMAGES を渡したときだけ docs/images/ に撮る');
   test.skip(({ browserName }) => browserName !== 'chromium', '画像は Chromium で撮る');
@@ -30,22 +40,23 @@ test.describe('説明ページの画像', () => {
     try {
       board.writePrefs(DOCS_PREFS);
 
-      // 作業ごとのページ: 上部から、作業に合わせて選んだパネル（作業の様子）の終わりまで。
+      // 作業ごとのページ: 上端から手順のカンバンの終わりまで。次の欄（作業の様子）の見出しは入れない。
       await page.setViewportSize({ width: 1280, height: 900 });
       await openAt(page, board.taskUrl(SAMPLE));
       await expect(page.locator('.nuu-panel')).toHaveCount(7);
       await expect(page.locator('[data-role="usage-short"]')).toBeVisible();
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-desktop.png'), fullPage: true,
-        clip: await band(page, '.nuu-shell', '[data-slot="panels"]', 0).then((b) => ({ ...b, y: 0, height: b.y + b.height + 40 })) });
+        clip: await topUntil(page, '[data-slot="tasks"]', '[data-slot="panels"]') });
 
       // セッションの欄だけを切り出す。
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-session.png'), fullPage: true,
         clip: await band(page, '#session', '#session') });
 
-      // スマホの幅: 上部の要約から、質問と止まっているものまで。
+      // スマホの幅: 上端から 1000px。上部の要約と PR / MR の欄が収まらなければ、収まるところまで伸ばす。
       await page.setViewportSize({ width: 390, height: 844 });
+      const mobile = await topUntil(page, '[data-slot="reviews"]', '[data-slot="attention"]');
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-mobile.png'), fullPage: true,
-        clip: await band(page, '.nuu-shell', '[data-slot="attention"]', 0).then((b) => ({ ...b, y: 0, height: b.y + b.height + 32 })) });
+        clip: { ...mobile, height: Math.max(1000, mobile.height) } });
 
       // 一覧: ページ全体。
       await page.setViewportSize({ width: 1280, height: 600 });

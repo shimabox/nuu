@@ -42,6 +42,8 @@ MAX_ROWS = 100
 MAX_SERIES = 4  # trend の系列
 MAX_POINTS = 50  # trend の 1 系列あたりの点
 MAX_STEPS = 12  # flow の段階
+MAX_REVIEWS = 20  # 作業に関係する PR / MR
+MAX_URL = 500  # PR / MR の URL
 MAX_INDEX_ITEMS = 1000
 MAX_ERRORS = 8  # 1 回に返す理由の数
 
@@ -53,6 +55,11 @@ PANEL_TYPES = ("progress", "grid", "table", "keyvalue", "text", "trend", "flow")
 THEMES = ("dark", "light")
 DENSITIES = ("dense", "airy")
 TASK_VIEWS = ("kanban", "list")
+# PR / MR。provider ごとに kind は 1 つに決まる（GitHub は Pull Request、GitLab は Merge Request）。
+REVIEW_KINDS = {"github": "pr", "gitlab": "mr"}
+REVIEW_STATES = ("draft", "open", "merged", "closed")
+# ページがリンクにするのは https:// だけなので、ほかの形の URL はここで止める。
+REVIEW_URL = re.compile(r"\Ahttps://[^\s/?#]+(?:[/?#]\S*)?\Z")
 PANEL_ID = re.compile(r"\A[a-z0-9][a-z0-9-]{0,39}\Z")
 ACCENT = re.compile(r"\A#[0-9A-Fa-f]{6}\Z")
 # UNIX 秒の範囲。ミリ秒で書いた値を見分けるため、上限を 10 桁にする。
@@ -173,6 +180,14 @@ class Checker:
                 ok = False
         return ok
 
+    def url(self, where, value):
+        if not self.text(where, value, MAX_URL):
+            return False
+        if not REVIEW_URL.match(value):
+            self.error(where, f"{json.dumps(value, ensure_ascii=False)} は使えません。https:// で始まり、空白を含まない URL にしてください")
+            return False
+        return True
+
     def unique(self, where, values, name):
         seen = set()
         for value in values:
@@ -194,7 +209,7 @@ def check_state(c, where, item, key, states=STATES):
 def check_task_data(c, data, project, slug):
     required = ("schema", "project", "slug", "title", "summary", "status", "startedAt", "updatedAt",
                 "tasks", "questions", "blockers", "artifacts", "panels")
-    if not c.record("データ", data, required):
+    if not c.record("データ", data, required, ("reviews",)):
         if not isinstance(data, dict):
             return
     if "schema" in data and data["schema"] != 1:
@@ -268,6 +283,42 @@ def check_task_data(c, data, project, slug):
         for i, panel in enumerate(data["panels"]):
             check_panel(c, f"panels[{i}]", panel)
         c.unique("panels", [p.get("id") for p in data["panels"] if isinstance(p, dict)], "id")
+
+    if "reviews" in data:
+        check_reviews(c, "reviews", data["reviews"], ("title", "at"))
+
+
+def check_reviews(c, where, reviews, extra):
+    """作業に関係する PR / MR。一覧の行では、表示に要る項目だけを持つので extra を空にする。"""
+    if not c.array(where, reviews, MAX_REVIEWS, "。マージ済みか閉じたもののうち、at の古いものから外してください"):
+        return
+    for i, review in enumerate(reviews):
+        item_where = f"{where}[{i}]"
+        if not c.record(item_where, review, ("provider", "kind", "number", "url", "state") + extra):
+            continue
+        if c.enum(at(item_where, "provider"), review["provider"], tuple(REVIEW_KINDS)):
+            kind_of = REVIEW_KINDS[review["provider"]]
+            if review["kind"] != kind_of:
+                c.error(at(item_where, "kind"), f"provider が {review['provider']} なら {kind_of} にしてください"
+                        f"（今は {json.dumps(review['kind'], ensure_ascii=False)}）。GitHub は pr、GitLab は mr です")
+        else:
+            c.enum(at(item_where, "kind"), review["kind"], tuple(REVIEW_KINDS.values()))
+        c.ident(at(item_where, "number"), review["number"])
+        c.url(at(item_where, "url"), review["url"])
+        c.enum(at(item_where, "state"), review["state"], REVIEW_STATES)
+        if "title" in extra:
+            c.text(at(item_where, "title"), review["title"], MAX_LABEL)
+        if "at" in extra:
+            c.time(at(item_where, "at"), review["at"])
+    seen = set()
+    for i, review in enumerate(reviews):
+        url = review.get("url") if isinstance(review, dict) else None
+        if not isinstance(url, str):
+            continue
+        if url in seen:
+            c.error(f"{where}[{i}].url", f"{json.dumps(url, ensure_ascii=False)} が重複しています。同じ PR / MR は 1 つにまとめ、"
+                    "その要素の state、title、at を書き換えてください")
+        seen.add(url)
 
 
 PANEL_FIELDS = {
@@ -468,8 +519,10 @@ def check_index(c, data):
               "startedAt", "updatedAt", "href")
     for i, item in enumerate(data["items"]):
         where = f"items[{i}]"
-        if not c.record(where, item, fields):
+        if not c.record(where, item, fields, ("reviews",)):
             continue
+        if "reviews" in item:
+            check_reviews(c, at(where, "reviews"), item["reviews"], ())
         texts_ok = all(c.text(at(where, key), item[key], MAX_LABEL if key != "title" else MAX_TITLE)
                        for key in ("project", "slug", "title"))
         c.enum(at(where, "status"), item["status"], INDEX_STATUSES)

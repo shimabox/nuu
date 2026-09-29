@@ -34,6 +34,19 @@
     removed: { label: '一覧から外した作業', icon: 'todo', tone: 'todo' }
   };
   var GROUPS = ['active', 'paused', 'done'];
+  // PR / MR の状態。色は手順の状態の色を借り、記号と文字も一緒に出す。
+  var REVIEW_STATES = {
+    draft: { label: '下書き', icon: 'todo', tone: 'todo' },
+    open: { label: 'レビュー中', icon: 'doing', tone: 'doing' },
+    merged: { label: 'マージ済み', icon: 'done', tone: 'done' },
+    closed: { label: '閉じた', icon: 'failed', tone: 'blocked' }
+  };
+  var PROVIDERS = {
+    github: { label: 'GitHub', kind: 'PR', mark: '#' },
+    gitlab: { label: 'GitLab', kind: 'MR', mark: '!' }
+  };
+  // 一覧の行に出す PR / MR の札の数。残りは「ほか n 件」にまとめる。
+  var INDEX_REVIEWS = 3;
 
   // ---------------------------------------------------------------- 値の扱い
 
@@ -64,6 +77,27 @@
     return Object.prototype.hasOwnProperty.call(STATES, state) ? state : 'todo';
   }
 
+  // 知らない PR / MR の状態はレビュー中として扱う。
+  function reviewState(state) {
+    return Object.prototype.hasOwnProperty.call(REVIEW_STATES, state) ? state : 'open';
+  }
+
+  function providerOf(review) {
+    return PROVIDERS[review.provider === 'gitlab' ? 'gitlab' : 'github'];
+  }
+
+  // 欄の見出し。すべて GitHub なら PR、すべて GitLab なら MR、両方あれば PR / MR。
+  function reviewsTitle(reviews) {
+    var kinds = {};
+    reviews.forEach(function (r) { kinds[providerOf(r).kind] = true; });
+    return kinds.PR && !kinds.MR ? 'PR' : kinds.MR && !kinds.PR ? 'MR' : 'PR / MR';
+  }
+
+  // GitHub は #7、GitLab は !12 と書く。
+  function reviewNumber(review) {
+    return providerOf(review).mark + text(review.number);
+  }
+
   function isStale(status, updatedAt, nowMs) {
     return workStatus(status) === 'active' && num(updatedAt) !== null && nowMs / 1000 - updatedAt >= STALE_SECONDS;
   }
@@ -71,6 +105,11 @@
   // 成果物などの参照は http: と https: だけをリンクにする。
   function safeUrl(ref) {
     return /^https?:\/\/[^\s]+$/i.test(text(ref)) ? text(ref) : null;
+  }
+
+  // PR / MR は https: だけをリンクにする。
+  function reviewUrl(url) {
+    return /^https:\/\/[^\s\/?#]+([\/?#]\S*)?$/.test(text(url)) ? text(url) : null;
   }
 
   // 作業ディレクトリを単一引用符で囲み、中の ' は '\'' に置き換える。
@@ -287,6 +326,7 @@
       h('div', { class: 'nuu-alerts' }, [loadWarning(), staleWarning()]),
       h('header', { class: 'nuu-head', 'data-slot': 'head' }),
       h('section', { class: 'nuu-stats', 'data-slot': 'stats', 'aria-label': '要約' }),
+      h('section', { class: 'nuu-section nuu-reviews', id: 'reviews', 'data-slot': 'reviews', 'aria-label': 'PR / MR' }),
       h('div', { class: 'nuu-attention', 'data-slot': 'attention' }),
       h('section', { class: 'nuu-section', 'data-slot': 'tasks' }),
       h('section', { class: 'nuu-section', 'data-slot': 'panels' }),
@@ -352,6 +392,38 @@
       stat('未回答の質問', [h('span', { class: 'nuu-big', 'data-tone': input.questions ? 'waiting' : null, text: input.questions }), h('span', { class: 'nuu-unit', text: '件' })]),
       stat('止まっているもの', [h('span', { class: 'nuu-big', 'data-tone': input.blockers ? 'blocked' : null, text: input.blockers }), h('span', { class: 'nuu-unit', text: '件' })]),
       stat('トークン量', tokens, { href: '#usage', class: 'nuu-stat nuu-stat-link', 'data-role': 'token-total' })
+    ];
+  }
+
+  function reviewBadge(state) {
+    var meta = REVIEW_STATES[reviewState(state)];
+    return h('span', { class: 'nuu-badge nuu-review-state', 'data-tone': meta.tone, 'data-state': reviewState(state) }, [
+      icon(meta.icon),
+      h('span', { text: meta.label })
+    ]);
+  }
+
+  // 新しい順に並べる。PR / MR がなければ欄を出さない。
+  function renderReviews(input) {
+    if (!input || !input.length) return null;
+    var items = input.slice().sort(function (a, b) { return (num(b.at) || 0) - (num(a.at) || 0); });
+    return [
+      sectionHead(reviewsTitle(items), items.length + ' 件'),
+      h('ul', { class: 'nuu-review-list' }, items.map(function (r) {
+        var url = reviewUrl(r.url);
+        var provider = providerOf(r);
+        var label = [h('span', { class: 'nuu-review-number', text: reviewNumber(r) }), h('span', { class: 'nuu-review-title', text: text(r.title) })];
+        return h('li', { class: 'nuu-review', 'data-provider': r.provider === 'gitlab' ? 'gitlab' : 'github', 'data-state': reviewState(r.state) }, [
+          h('span', { class: 'nuu-review-provider', text: provider.label + ' ' + provider.kind }),
+          url
+            ? h('a', { class: 'nuu-review-main', href: url, target: '_blank', rel: 'noopener' }, label)
+            : h('span', { class: 'nuu-review-main' }, label),
+          h('span', { class: 'nuu-review-meta' }, [
+            reviewBadge(r.state),
+            h('span', { class: 'nuu-review-time' }, ['最終更新 ', timeNode(r.at, 'both')])
+          ])
+        ]);
+      }))
     ];
   }
 
@@ -787,6 +859,10 @@
         blockers: blockers.length,
         tokens: u && isObject(u.totals) ? num(u.totals.total) : null
       }, renderStats) || any;
+      var reviews = d ? list(d.reviews).filter(isObject) : [];
+      any = slot(root, 'reviews', d && reviews, renderReviews) || any;
+      var reviewsNode = root.querySelector('[data-slot="reviews"]');
+      if (reviewsNode) reviewsNode.setAttribute('aria-label', reviewsTitle(reviews));
       any = slot(root, 'attention', d && { questions: questions, blockers: blockers }, renderAttention) || any;
       any = slot(root, 'tasks', d && { tasks: tasks, view: view }, renderTasks) || any;
       any = slot(root, 'panels', d && list(d.panels), renderPanels) || any;
@@ -828,6 +904,27 @@
     return encodeURIComponent(project) + '/' + encodeURIComponent(slug) + '.html';
   }
 
+  // 一覧の行の PR / MR の札。押すとその PR / MR のページを開く。多いときは先頭の数件と「ほか n 件」にする。
+  function reviewChips(reviews, href) {
+    if (!reviews.length) return null;
+    var shown = reviews.slice(0, INDEX_REVIEWS);
+    var rest = reviews.length - shown.length;
+    return h('div', { class: 'nuu-row-reviews', 'data-role': 'row-reviews' }, shown.map(function (r) {
+      var state = reviewState(r.state);
+      var meta = REVIEW_STATES[state];
+      var provider = providerOf(r);
+      var url = reviewUrl(r.url);
+      var props = {
+        class: 'nuu-review-chip', 'data-tone': meta.tone, 'data-state': state,
+        title: provider.label + ' ' + provider.kind + ' ' + reviewNumber(r) + '（' + meta.label + '）'
+      };
+      if (url) Object.assign(props, { href: url, target: '_blank', rel: 'noopener' });
+      return h(url ? 'a' : 'span', props, [icon(meta.icon), h('span', { text: provider.kind + ' ' + reviewNumber(r) })]);
+    }).concat(rest > 0 ? [href
+      ? h('a', { class: 'nuu-review-more', href: href + '#reviews', text: 'ほか ' + rest + ' 件' })
+      : h('span', { class: 'nuu-review-more', text: 'ほか ' + rest + ' 件' })] : []));
+  }
+
   function indexRow(item) {
     var href = itemHref(item);
     var usage = item.usage;
@@ -845,7 +942,8 @@
         h('div', { class: 'nuu-row-sub' }, [
           h('span', { class: 'nuu-project', text: text(item.project) }),
           session ? h('span', { class: 'nuu-session-id', 'data-role': 'session-short', text: 'セッション ' + session }) : null
-        ])
+        ]),
+        reviewChips(list(item.reviews).filter(isObject), href)
       ]),
       h('div', { class: 'nuu-row-status' }, [
         workBadge(status),

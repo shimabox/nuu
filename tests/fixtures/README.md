@@ -13,7 +13,9 @@
 - `<プロジェクト名>/<開始日時>-<作業名>.data.js`: 作業のデータ
 - `<プロジェクト名>/<開始日時>-<作業名>.usage.js`: トークン量とセッション（本番ではフックが書く）
 
-`sample-shop/2026-09-28-2252-search-filters.data.js` は見本の作業で、型付きパネル 7 種がすべて入っている。画面の画像もこのデータから撮る。
+`sample-shop/2026-09-28-2252-search-filters.data.js` は見本の作業で、型付きパネル 7 種と、GitHub の PR 1 件が入っている。画面の画像もこのデータから撮る。
+
+PR / MR（`reviews`）は、`sample-app` に GitLab の MR（下書き）、`sample-infra` の `db-migration` に GitHub と GitLab の 4 件（マージ済み、閉じた、下書き）を入れている。見本の PR（レビュー中）と合わせて、4 つの状態がそろう。一覧で「ほか n 件」になるのは `db-migration` の行。
 
 ## invalid/
 

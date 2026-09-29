@@ -150,6 +150,133 @@ test.describe('描画', () => {
   });
 });
 
+test.describe('PR / MR', () => {
+  const review = (overrides) => Object.assign({
+    provider: 'github', kind: 'pr', number: 7, title: '題名', url: 'https://github.com/example/app/pull/7', state: 'open', at: 1790606000,
+  }, overrides);
+  const rows = (page) => page.locator('[data-slot="reviews"] .nuu-review');
+
+  test('要約のすぐ下に欄を置き、番号と題名を新しいタブで開くリンクにする', async ({ page }) => {
+    await openAt(page, board.taskUrl());
+    const section = page.locator('[data-slot="reviews"]');
+    await expect(section).toHaveAttribute('aria-label', 'PR');
+    await expect(section.locator('.nuu-h2')).toHaveText('PR');
+    await expect(section.locator('.nuu-count')).toHaveText('1 件');
+    expect(await section.evaluate((node) => node.previousElementSibling.getAttribute('data-slot'))).toBe('stats');
+    const row = rows(page).first();
+    await expect(row.locator('.nuu-review-provider')).toHaveText('GitHub PR');
+    const link = row.locator('a.nuu-review-main');
+    await expect(link).toHaveAttribute('href', 'https://github.com/example-shop/storefront/pull/128');
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener');
+    await expect(link.locator('.nuu-review-number')).toHaveText('#128');
+    await expect(link.locator('.nuu-review-title')).toHaveText('検索 API に価格と在庫の絞り込みを追加する');
+    await expect(row.locator('.nuu-review-state')).toHaveText('レビュー中');
+    await expect(row.locator('.nuu-review-time')).toHaveText('最終更新 23:35（18 分前）');
+  });
+
+  test('GitHub は #、GitLab は ! で番号を書き、4 つの状態を色と記号と文字で示し、新しい順に並べる', async ({ page }) => {
+    const data = sample();
+    data.reviews = [
+      review({ number: 1, url: 'https://github.com/example/app/pull/1', state: 'draft', at: 1790604000 }),
+      review({ provider: 'gitlab', kind: 'mr', number: 12, url: 'https://gitlab.com/example/app/-/merge_requests/12', state: 'merged', at: 1790606000 }),
+      review({ number: 2, url: 'https://github.com/example/app/pull/2', state: 'open', at: 1790605000 }),
+      review({ provider: 'gitlab', kind: 'mr', number: 13, url: 'https://gitlab.example.com/group/sub/app/-/merge_requests/13', state: 'closed', at: 1790607000 }),
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    await expect(rows(page).locator('.nuu-review-number')).toHaveText(['!13', '!12', '#2', '#1']);
+    await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitLab MR', 'GitLab MR', 'GitHub PR', 'GitHub PR']);
+    await expect(rows(page).locator('.nuu-review-state')).toHaveText(['閉じた', 'マージ済み', 'レビュー中', '下書き']);
+    const tones = await rows(page).locator('.nuu-review-state').evaluateAll((nodes) => nodes.map((n) => [n.getAttribute('data-tone'), getComputedStyle(n).color]));
+    expect(tones.map((t) => t[0])).toEqual(['blocked', 'done', 'doing', 'todo']);
+    expect(new Set(tones.map((t) => t[1])).size).toBe(4);
+    for (const badge of await rows(page).locator('.nuu-review-state').all()) {
+      await expect(badge.locator('svg.nuu-icon')).toHaveCount(1);
+    }
+  });
+
+  test('見出しと aria-label は、GitHub だけなら PR、GitLab だけなら MR、両方あれば PR / MR にし、読み直して中身が変わると切り替える', async ({ page }) => {
+    const gitlab = (overrides) => review(Object.assign({
+      provider: 'gitlab', kind: 'mr', number: 12, url: 'https://gitlab.com/example/app/-/merge_requests/12',
+    }, overrides));
+    const section = page.locator('[data-slot="reviews"]');
+    const expectTitle = async (title, count) => {
+      await expect(section).toHaveAttribute('aria-label', title);
+      await expect(section.locator('.nuu-h2')).toHaveText(title);
+      await expect(section.locator('.nuu-count')).toHaveText(`${count} 件`);
+    };
+    const data = sample();
+    data.reviews = [review({ number: 1, url: 'https://github.com/example/app/pull/1' }), review({ number: 2, url: 'https://github.com/example/app/pull/2' })];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    await expectTitle('PR', 2);
+
+    data.reviews = [gitlab({ number: 12 }), gitlab({ number: 13, url: 'https://gitlab.com/example/app/-/merge_requests/13' })];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expectTitle('MR', 2);
+    await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitLab MR', 'GitLab MR']);
+
+    data.reviews = [gitlab(), review()];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expectTitle('PR / MR', 2);
+    await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitLab MR', 'GitHub PR']);
+
+    data.reviews = [review()];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expectTitle('PR', 1);
+  });
+
+  test('https: 以外の URL はリンクにせず、題名などの HTML の断片は文字として出す', async ({ page }) => {
+    const data = sample();
+    data.reviews = [
+      review({ number: 1, url: 'http://github.com/example/app/pull/1', title: '<img src=x onerror="window.__xss = 1">http', at: 1790606500 }),
+      review({ number: 2, url: 'javascript:window.__xss = 2', at: 1790606400 }),
+      review({ number: 3, url: ' https://github.com/example/app/pull/3', at: 1790606300 }),
+      review({ number: 4, url: 'https://github.com/example/app/pull/4 onmouseover=x', at: 1790606200 }),
+      review({ number: 5, url: 'https://github.com/example/app/pull/5', at: 1790606100 }),
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    await expect(rows(page)).toHaveCount(5);
+    await expect(page.locator('[data-slot="reviews"] a')).toHaveCount(1);
+    await expect(page.locator('[data-slot="reviews"] a')).toHaveAttribute('href', 'https://github.com/example/app/pull/5');
+    await expect(rows(page).first().locator('span.nuu-review-main')).toHaveText('#1<img src=x onerror="window.__xss = 1">http');
+    await expect(page.locator('img[src="x"]')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+  });
+
+  test('PR / MR がないか空なら欄を出さず、足されたら出す', async ({ page }) => {
+    const data = sample();
+    delete data.reviews;
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    const section = page.locator('[data-slot="reviews"]');
+    await expect(section).toBeHidden();
+    await expect(section).toBeEmpty();
+
+    data.reviews = [];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expect(section).toBeHidden();
+
+    data.reviews = [review({ state: 'draft' })];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expect(section).toBeVisible();
+    await expect(rows(page).locator('.nuu-review-state')).toHaveText('下書き');
+
+    data.reviews = [review({ state: 'merged', at: 1790607000 })];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expect(rows(page)).toHaveCount(1);
+    await expect(rows(page).locator('.nuu-review-state')).toHaveText('マージ済み');
+  });
+});
+
 test.describe('読み直し', () => {
   test('データを書き換えると再読み込みせずに表示が変わり、スクロール位置と開いた詳細が残る', async ({ page }) => {
     await openAt(page, board.taskUrl());

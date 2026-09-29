@@ -105,6 +105,9 @@ window.nuuDashboardData(
   "artifacts": [
     { "name": "設計メモ", "ref": "docs/search-filters.md", "at": 1790603523 }
   ],
+  "reviews": [
+    { "provider": "github", "kind": "pr", "number": 128, "title": "検索 API に絞り込みを追加する", "url": "https://github.com/example-shop/storefront/pull/128", "state": "draft", "at": 1790603523 }
+  ],
   "panels": [
     { "id": "stages", "type": "flow", "title": "公開までの流れ", "wide": true, "steps": [{ "label": "API", "state": "doing" }, { "label": "画面", "state": "todo" }, { "label": "公開", "state": "todo" }] },
     { "id": "coverage", "type": "progress", "title": "対応済みの条件", "items": [{ "label": "API の条件", "value": 1, "total": 3, "unit": "条件" }] },
@@ -118,12 +121,24 @@ window.nuuDashboardData(
 );
 ```
 
-- 必須の項目は例のとおり。書けない項目名は使わない（知らない項目は拒否される）。`note` は省略できる。なければ `[]` にする
+- 必須の項目は例のとおり。書けない項目名は使わない（知らない項目は拒否される）。`note` と `reviews` は省略できる。ほかの配列は、なければ `[]` にする
 - `status` は `active`（進行中）、`paused`（中断中）、`done`（完了）、`removed`（一覧から外す）。setup では `active`
 - 手順の `status` は `todo | doing | waiting | blocked | done`。`id` は 1 からの整数で重ねない
 - 質問は `question`、`default`（既定の対応）、`proceeding`（既定の対応で進めているか）、`askedAt`。回答が出たら `answer` と `answeredAt` を足す
 - 止まっているものは `what`、`why`、`since`、`next`。成果物は `name`、`ref`（パスまたは URL）、`at`、任意の `note`
 - `startedAt` と `updatedAt` は setup で取った同じ時刻でよい。`updatedAt` は書き換えるたびに取り直す
+
+## PR / MR（`reviews`）
+
+作業に関係する GitHub の Pull Request と GitLab の Merge Request を載せる。呼び出し元から渡されたときだけ書き、渡されていなければ `reviews` を書かない。ページは PR / MR の状態を取りにいかないので、渡された値だけを載せる。
+
+- `provider` は `github | gitlab`。`kind` は、`github` なら `pr`、`gitlab` なら `mr` に限る
+- `number` は 1 以上の整数（GitHub の `#7` なら `7`、GitLab の `!12` なら `12`）
+- `title` は PR / MR の題名、`url` は PR / MR のページの URL。`url` は `https://` で始まるものだけを書ける。ほかの形の URL しかなければ、その PR / MR は載せずに返答で知らせる
+- `state` は `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）
+- `at` は載せた時刻（`date +%s`）。状態が変わった時刻が渡されていれば、それを使う
+- 同じ `url` の要素は 1 つだけにする
+- 上限: 20 件、題名 200 字、`url` 500 字
 
 # パネルの選び方
 
@@ -146,13 +161,13 @@ window.nuuDashboardData(
 - 手順のカンバンと同じことを別のパネルに書かない。手順はパネルにせず `tasks` に書く
 - 呼び出し元から渡されていない進捗や数値は作らない。事実だけを載せる。まだ値がないパネルは作らないか、`todo` の状態で置く
 - パネルは 12 個まで。多くても 3〜6 個に絞る
-- 上限: タイトル 120 字、要約 600 字、ラベルなど 200 字、補足 1000 字、`text` の本文 4000 字。手順 60、質問 30、止まっているもの 20、成果物 50
+- 上限: タイトル 120 字、要約 600 字、ラベルなど 200 字、補足 1000 字、`text` の本文 4000 字。手順 60、質問 30、止まっているもの 20、成果物 50、PR / MR 20
 
 書いた直後にフックがデータを確かめる。壊れていると知らされたら、知らされた箇所だけを直す。確かめるために読み直さない。
 
 # 呼び出しの種類
 
-- setup: 作業ディレクトリ、作業の概要、手順の一覧を受け取る。好みを確かめ、時刻を取り、パネルを選んで作業のデータを Write する。そのあと、同じ名前の `.html` を 1 回 Read して、フックがページを置いたかを確かめる。なければ、データのパスと一緒に「ページ（.html）ができていません。install.sh を実行し直してください」と返す
+- setup: 作業ディレクトリ、作業の概要、手順の一覧を受け取る。作業に関係する PR / MR が渡されたら `reviews` に書く。好みを確かめ、時刻を取り、パネルを選んで作業のデータを Write する。そのあと、同じ名前の `.html` を 1 回 Read して、フックがページを置いたかを確かめる。なければ、データのパスと一緒に「ページ（.html）ができていません。install.sh を実行し直してください」と返す
 - 構成の見直し: dashboard-updater が「構成の見直しが必要です」と返したときに、パスと変化を受け取る。データを 1 回 Read し、パネルの種類・並び・中身を直して、渡された変化も反映する
 - 好みの変更: `prefs.data.js` だけを書き換える
 - update と finish: 通常は dashboard-updater が行う。呼ばれたときは、渡されたパスのデータだけを更新する。パスが渡されていなければ、推測で既存のファイルを選ばず、パスが必要だと返す

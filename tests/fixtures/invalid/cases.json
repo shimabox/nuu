@@ -216,6 +216,84 @@
     "what": "flow の段階が多すぎる"
   },
   {
+    "file": "bad/review-http-url.data.js",
+    "as": "bad/review-http-url.data.js",
+    "reason": "reviews[0].url: \"http://github.com/example/app/pull/7\" は使えません。https:// で始まり",
+    "what": "PR の URL が http"
+  },
+  {
+    "file": "bad/review-js-url.data.js",
+    "as": "bad/review-js-url.data.js",
+    "reason": "reviews[0].url: \"javascript:alert(1)\" は使えません",
+    "what": "PR の URL が javascript:"
+  },
+  {
+    "file": "bad/review-github-mr.data.js",
+    "as": "bad/review-github-mr.data.js",
+    "reason": "reviews[0].kind: provider が github なら pr にしてください",
+    "what": "GitHub なのに MR"
+  },
+  {
+    "file": "bad/review-gitlab-pr.data.js",
+    "as": "bad/review-gitlab-pr.data.js",
+    "reason": "reviews[0].kind: provider が gitlab なら mr にしてください",
+    "what": "GitLab なのに PR"
+  },
+  {
+    "file": "bad/review-dup-url.data.js",
+    "as": "bad/review-dup-url.data.js",
+    "reason": "reviews[1].url: \"https://github.com/example/app/pull/7\" が重複しています。同じ PR / MR は 1 つにまとめ",
+    "what": "PR の URL が重複"
+  },
+  {
+    "file": "bad/review-unknown-key.data.js",
+    "as": "bad/review-unknown-key.data.js",
+    "reason": "reviews[0]: 知らない項目 \"labels\"",
+    "what": "PR に知らない項目"
+  },
+  {
+    "file": "bad/review-bad-state.data.js",
+    "as": "bad/review-bad-state.data.js",
+    "reason": "reviews[0].state: \"approved\" は使えません。draft / open / merged / closed",
+    "what": "PR の状態の語彙が違う"
+  },
+  {
+    "file": "bad/review-bad-number.data.js",
+    "as": "bad/review-bad-number.data.js",
+    "reason": "reviews[0].number: 1 以上の整数",
+    "what": "PR の番号が 0"
+  },
+  {
+    "file": "bad/review-ms-time.data.js",
+    "as": "bad/review-ms-time.data.js",
+    "reason": "reviews[0].at: 1790604000000 はミリ秒",
+    "what": "PR の時刻がミリ秒"
+  },
+  {
+    "file": "bad/review-title-too-long.data.js",
+    "as": "bad/review-title-too-long.data.js",
+    "reason": "reviews[0].title: 200 文字以内",
+    "what": "PR の題名が長すぎる"
+  },
+  {
+    "file": "bad/review-url-too-long.data.js",
+    "as": "bad/review-url-too-long.data.js",
+    "reason": "reviews[0].url: 500 文字以内",
+    "what": "PR の URL が長すぎる"
+  },
+  {
+    "file": "bad/review-too-many.data.js",
+    "as": "bad/review-too-many.data.js",
+    "reason": "reviews: 20 件以内にしてください（今は 21 件）。マージ済みか閉じたもののうち",
+    "what": "PR / MR が多すぎる"
+  },
+  {
+    "file": "bad/review-not-array.data.js",
+    "as": "bad/review-not-array.data.js",
+    "reason": "reviews: 配列にしてください",
+    "what": "reviews が配列でない"
+  },
+  {
     "file": "bad/deeper/nested.data.js",
     "as": "bad/deeper/nested.data.js",
     "reason": "置き場所",
@@ -286,5 +364,17 @@
     "as": "index.data.js",
     "reason": "items[0].status: \"removed\" は使えません",
     "what": "一覧に外した作業の行がある"
+  },
+  {
+    "file": "index/review-title.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].reviews[0]: 知らない項目 \"title\"",
+    "what": "一覧の PR / MR に表示しない項目がある"
+  },
+  {
+    "file": "index/review-http-url.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].reviews[0].url: \"http://github.com/example/app/pull/7\" は使えません",
+    "what": "一覧の PR / MR の URL が http"
   }
 ]

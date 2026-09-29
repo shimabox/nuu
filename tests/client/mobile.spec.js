@@ -27,12 +27,18 @@ async function expectNoOverflow(page) {
   expect(result.scrollWidth).toBeLessThanOrEqual(360);
 }
 
+// 要素の高さ。ブラウザによっては小数点以下の丸めで 44px がわずかに小さく出る（例: 43.99993896484375）ので、0.01px 未満の差は許す。
+async function tapHeight(node) {
+  return (await node.boundingBox()).height + 0.01;
+}
+
 for (const density of ['airy', 'dense']) {
   test(`作業のページは幅 360px で横にはみ出さない（${density}）`, async ({ page }) => {
     board.writePrefs({ schema: 1, theme: 'dark', density, accent: '#3CCFBC', taskView: 'kanban' });
     await openAt(page, board.taskUrl(SAMPLE));
     await expect(page.locator('.nuu-panel')).toHaveCount(7);
     await expect(page.locator('[data-role="usage-short"]')).toBeVisible();
+    await expect(page.locator('.nuu-review')).toBeVisible();
     await expectNoOverflow(page);
   });
 
@@ -40,6 +46,7 @@ for (const density of ['airy', 'dense']) {
     board.writePrefs({ schema: 1, theme: 'light', density, accent: '#3CCFBC', taskView: 'kanban' });
     await openAt(page, board.indexUrl());
     await expect(page.locator('.nuu-row [data-role="session-short"]').first()).toBeVisible();
+    await expect(page.locator('.nuu-review-more')).toBeVisible();
     await expectNoOverflow(page);
   });
 }
@@ -54,6 +61,10 @@ test('長い名前や長い値も横にはみ出さない（手順は一覧の�
     questions: [{ id: 1, question: long, default: long, proceeding: true, askedAt: 1790600000 }],
     blockers: [{ what: long, why: long, since: 1790600000, next: long }],
     artifacts: [{ name: long, ref: `/very/long/path/${'segment/'.repeat(20)}file.ts`, at: 1790600000 }],
+    reviews: [
+      { provider: 'gitlab', kind: 'mr', number: 123456789, title: long, url: `https://gitlab.example.com/${'group/'.repeat(20)}app/-/merge_requests/123456789`, state: 'merged', at: 1790600000 },
+      { provider: 'github', kind: 'pr', number: 7, title: long, url: 'http://github.com/example/app/pull/7', state: 'draft', at: 1790599000 },
+    ],
     panels: [
       { id: 't', type: 'table', title: long, columns: [{ label: long }, { label: 'b' }, { label: 'c' }], rows: [[long, 12345678901, { text: long, state: 'blocked' }]] },
       { id: 'k', type: 'keyvalue', title: 'k', items: [{ label: long, value: long, state: 'failed' }] },
@@ -63,6 +74,7 @@ test('長い名前や長い値も横にはみ出さない（手順は一覧の�
   board.writeUsage('sample-long/2026-09-28-0000-long', { sessionId: 's'.repeat(80), cwd: `/work/${'d'.repeat(120)}`, totals: { total: 123456789012 } });
   await openAt(page, board.taskUrl('sample-long/2026-09-28-0000-long'));
   await expect(page.locator('.nuu-tasklist')).toBeVisible();
+  await expect(page.locator('.nuu-review')).toHaveCount(2);
   await expectNoOverflow(page);
 });
 
@@ -86,9 +98,9 @@ test('狭い画面ではカンバンの列を縦に積み、表を 1 行 1 枚�
 test('リンクとボタンは指で押しやすい高さ（44px 以上）にし、本文の文字は 14px 以上にする', async ({ page }) => {
   board.writePrefs({ schema: 1, theme: 'dark', density: 'dense', accent: '#3CCFBC', taskView: 'kanban' });
   await openAt(page, board.taskUrl(SAMPLE));
-  for (const selector of ['.nuu-back', '[data-role="token-total"]', '.nuu-button', 'details[data-key="answered"] > summary']) {
+  for (const selector of ['.nuu-back', '[data-role="token-total"]', 'a.nuu-review-main', '.nuu-button', 'details[data-key="answered"] > summary']) {
     for (const node of await page.locator(selector).all()) {
-      expect((await node.boundingBox()).height, selector).toBeGreaterThanOrEqual(44);
+      expect(await tapHeight(node), selector).toBeGreaterThanOrEqual(44);
     }
   }
   expect(await page.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize))).toBeGreaterThanOrEqual(14);
@@ -96,6 +108,6 @@ test('リンクとボタンは指で押しやすい高さ（44px 以上）にし
   await page.goto(board.indexUrl());
   await expect(page.locator('a.nuu-row-title').first()).toBeVisible();
   for (const node of await page.locator('a.nuu-row-title').all()) {
-    expect((await node.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    expect(await tapHeight(node)).toBeGreaterThanOrEqual(44);
   }
 });

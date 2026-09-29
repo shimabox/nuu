@@ -73,10 +73,57 @@ test('行から作業のページへ移れる。形の違う href はリンク�
   board.writeIndex(data);
   await openIndex(page);
   await expect(page.locator('a.nuu-row-title[href="sample-shop/2026-09-28-2252-search-filters.html"]')).toHaveCount(1);
-  await expect(page.locator('a[href^="javascript" i], a[href^="https:"]')).toHaveCount(0);
+  // https: のリンクは PR / MR の札だけ。行のタイトルは外へのリンクにしない。
+  await expect(page.locator('a[href^="javascript" i], a.nuu-row-title[href^="https:"]')).toHaveCount(0);
   await expect(page.locator('.nuu-row[data-key="evil/x"] .nuu-row-title')).toHaveText('<b>悪い行</b>');
   await page.locator('a.nuu-row-title[href="sample-shop/2026-09-28-2252-search-filters.html"]').click();
   await expect(page.locator('[data-page="task"] .nuu-title')).toHaveText('商品検索に価格・在庫・評価の絞り込みを追加する');
+});
+
+test('行に PR / MR の札を出し、押すとその PR / MR を新しいタブで開く。多いときは先頭の 3 件と「ほか n 件」にする', async ({ page }) => {
+  await openIndex(page);
+  const chips = (key) => page.locator(`.nuu-row[data-key="${key}"] .nuu-review-chip`);
+  const shop = chips('sample-shop/2026-09-28-2252-search-filters');
+  await expect(shop).toHaveText(['PR #128']);
+  await expect(shop).toHaveAttribute('href', 'https://github.com/example-shop/storefront/pull/128');
+  await expect(shop).toHaveAttribute('target', '_blank');
+  await expect(shop).toHaveAttribute('rel', 'noopener');
+  await expect(shop).toHaveAttribute('data-state', 'open');
+  await expect(shop).toHaveAttribute('title', 'GitHub PR #128（レビュー中）');
+  await expect(chips('sample-app/2026-09-28-1905-login-audit')).toHaveText(['MR !42']);
+  await expect(chips('sample-app/2026-09-28-1905-login-audit')).toHaveAttribute('data-state', 'draft');
+
+  const migration = page.locator('.nuu-row[data-key="sample-infra/2026-09-26-0930-db-migration"]');
+  await expect(migration.locator('.nuu-review-chip')).toHaveText(['PR #305', 'MR !87', 'PR #301']);
+  await expect(migration.locator('.nuu-review-more')).toHaveText('ほか 1 件');
+  await expect(migration.locator('.nuu-review-more')).toHaveAttribute('href', 'sample-infra/2026-09-26-0930-db-migration.html#reviews');
+  await expect(page.locator('.nuu-row[data-key="sample-docs/2026-09-27-1010-api-guide"] [data-role="row-reviews"]')).toHaveCount(0);
+
+  // 札は行全体のリンクより手前にあり、押すと行のリンクではなく札のリンクが働く。
+  const onTop = await shop.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return node.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+  });
+  expect(onTop).toBe(true);
+
+  await migration.locator('.nuu-review-more').click();
+  await expect(page.locator('[data-page="task"] .nuu-title')).toHaveText('データベースを新しい版へ移す');
+  await expect(page.locator('#reviews .nuu-review')).toHaveCount(4);
+});
+
+test('一覧の札も https: 以外の URL はリンクにしない', async ({ page }) => {
+  const data = index();
+  const row = data.items.find((item) => item.project === 'sample-app');
+  row.reviews = [
+    { provider: 'gitlab', kind: 'mr', number: 1, url: 'javascript:alert(1)', state: 'open' },
+    { provider: 'github', kind: 'pr', number: 2, url: 'http://github.com/example/app/pull/2', state: 'merged' },
+  ];
+  board.writeIndex(data);
+  await openIndex(page);
+  const chips = page.locator('.nuu-row[data-key="sample-app/2026-09-28-1905-login-audit"] .nuu-review-chip');
+  await expect(chips).toHaveText(['MR !1', 'PR #2']);
+  expect(await chips.evaluateAll((nodes) => nodes.map((n) => n.tagName))).toEqual(['SPAN', 'SPAN']);
+  await expect(page.locator('a[href^="javascript" i], a[href^="http:"]')).toHaveCount(0);
 });
 
 test('一覧のデータを書き換えると、再読み込みせずに行が変わる', async ({ page }) => {

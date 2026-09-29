@@ -170,6 +170,15 @@ check 'setup でスタブができたかを 1 回確かめる' body_has '同じ�
 check 'スタブがなければその旨を返す' body_has 'ページ（.html）ができていません'
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
+check 'setup で渡された PR / MR を reviews に書く' body_has '作業に関係する PR / MR が渡されたら `reviews` に書く'
+check 'builder の例に PR / MR（reviews）が入っている' body_has '  "reviews": ['
+check 'reviews は省略できる' body_has '`note` と `reviews` は省略できる'
+check 'PR / MR の kind は provider で決まる' body_has '`kind` は、`github` なら `pr`、`gitlab` なら `mr` に限る'
+check 'PR / MR の状態の語彙を示す' body_has '`state` は `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）'
+check 'PR / MR の url は https:// だけ' body_has '`url` は `https://` で始まるものだけを書ける'
+check '同じ url の PR / MR は 1 つだけ' body_has '同じ `url` の要素は 1 つだけにする'
+check 'PR / MR の上限を示す（20 件、題名 200 字、url 500 字）' body_has '上限: 20 件、題名 200 字、`url` 500 字'
+check 'ページは PR / MR の状態を取りにいかない' body_has 'ページは PR / MR の状態を取りにいかないので、渡された値だけを載せる'
 
 echo '== 更新専用エージェントの定義 =='
 
@@ -213,6 +222,14 @@ check 'updater は途中で止めた作業を中断中にする' updater_says '`
 check 'updater は再開した作業を進行中に戻す' updater_says '再開したと渡されたら、`status` を `active`（進行中）に戻す'
 check 'updater は外すときに status を removed にする Edit を 1 回だけ行う' updater_says '`status` を `removed` にする Edit を 1 回だけ行う'
 check 'updater は消すときも作業のファイルに触れない' updater_says 'ファイルは呼び出し元が消す'
+check 'updater は PR / MR の追加と更新を既存の項目の更新として扱う' \
+  updater_says '要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない'
+check 'updater は同じ url の要素の状態と題名と at を書き換える' updater_says '渡された PR / MR と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える'
+check 'updater は同じ url の PR / MR を 2 つ作らない' updater_says '同じ `url` の要素を 2 つ作らない'
+check 'updater は初めての PR / MR で reviews を作る' updater_says 'PR / MR を初めて載せるときは、`reviews` の配列を作る'
+check 'updater も kind を provider に合わせる' updater_says '`kind` は、`github` なら `pr`、`gitlab` なら `mr`'
+check 'updater も PR / MR の url を https:// に限る' updater_says '`url` は `https://` で始まるものだけを書ける'
+check 'updater は PR / MR の上限を守る（20 件、題名 200 字、url 500 字）' updater_says '上限は 20 件、題名 200 字、`url` 500 字'
 
 for file in agents/dashboard-builder.md agents/dashboard-updater.md; do
   # 見た目と動きは固定のクライアントが受け持つので、HTML / CSS / JavaScript の書き方を指示しない。
@@ -265,6 +282,11 @@ check '進行中の作業は消す前に確かめる' rules_have '進行中の�
 check '途中で止めたら中断中にして報告する' rules_have '利用者が作業を途中で止めたら、`dashboard-updater` で中断中に更新し'
 check '途中で止めた作業は完了にしない' rules_have '中断中に更新し、終わるのを待ってから利用者に報告する。完了にはしない'
 check '再開したら進行中に戻す' rules_have '再開したら、進行中に戻してから続ける'
+check 'PR / MR を作った、状態が変わった、見つけたときに載せる' \
+  rules_have 'Merge Request（MR）を作ったとき、その状態が変わったとき（下書きから公開、マージ、閉じた）、作業に関係する既存の PR / MR を見つけたときは'
+check 'PR / MR の provider、番号、題名、URL、状態を updater に渡す' \
+  rules_have 'provider（github / gitlab）、番号、題名、URL、状態（draft / open / merged / closed）を `dashboard-updater` に渡して載せる'
+check 'setup のときに分かっている PR / MR は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
 
 echo '== ガード =='
 
@@ -615,6 +637,12 @@ import json, sys
 made, sample = ({i["href"]: i for i in json.loads("\n".join(open(p, encoding="utf-8").read().split("\n")[1:-2]))["items"]} for p in sys.argv[1:])
 sys.exit(0 if made and all(sample.get(href) == row for href, row in made.items()) else 1)
 PY
+expect_validate none 'PR / MR を持つ一覧のデータも validate を通る' "$INDEX_DATA"
+expect_index '一覧の行には PR / MR の札に要る項目だけを持たせる' \
+  '.items[] | select(.project == "sample-shop") | .reviews[0] | keys_unsorted | join(",")' 'provider,kind,number,url,state'
+expect_index '一覧の行の PR / MR は最終更新が新しい順' \
+  '.items[] | select(.slug == "2026-09-26-0930-db-migration") | .reviews | map(.number) | join(",")' '305,87,301,298'
+expect_index 'PR / MR のない作業の行には reviews を持たせない' '.items[] | select(.project == "sample-docs") | has("reviews")' false
 check 'ほかの作業のスタブは置かない（書いた作業だけ）' test ! -e "$DASH_DIR/sample-docs/2026-09-27-1010-api-guide.html"
 
 printf 'old\n' >"$DASH_DIR/${SAMPLE%.data.js}.html"
@@ -866,6 +894,16 @@ for src, width, height in found:
     with open(os.path.join(docs, src), "rb") as f:
         sizes[src] = struct.unpack(">II", f.read(24)[16:24]) == (int(width), int(height))
 sys.exit(0 if len(sizes) == 4 and all(sizes.values()) else 1)
+PY
+check '作業ごとの画像はページ全体でなく上部だけを切り取る' python3 - "$ROOT/docs/images" <<'PY'
+import os, struct, sys
+images = sys.argv[1]
+def size(name):
+    with open(os.path.join(images, name), "rb") as f:
+        return struct.unpack(">II", f.read(24)[16:24])
+width, height = size("dashboard-desktop.png")
+# 上端から手順のカンバンの終わりまで。作業の様子のパネルやセッションの欄までは入れない。
+sys.exit(0 if width == 1280 and 1100 <= height <= 1400 and size("dashboard-mobile.png") == (390, 1000) else 1)
 PY
 for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png; do
   check "README に ${image} を載せる" grep -qF "docs/images/${image}" "$ROOT/README.md"

@@ -35,6 +35,8 @@ PREFS_NAME = "prefs" + DATA_SUFFIX
 LOCK_NAME = ".index.lock"
 # ロックを待つ上限（秒）。エージェント定義のフックの timeout（10 秒）より短くする。
 LOCK_WAIT = 5.0
+# 一覧の行に持たせる PR / MR の項目。題名と時刻は作業のページで見る。
+REVIEW_FIELDS = ("provider", "kind", "number", "url", "state")
 
 
 def load_validate():
@@ -109,7 +111,7 @@ def task_row(validate, project, slug, path):
         return None
     if data["status"] == "removed":
         return False
-    return {
+    row = {
         "project": project,
         "slug": slug,
         "title": data["title"],
@@ -122,6 +124,11 @@ def task_row(validate, project, slug, path):
         "updatedAt": data["updatedAt"],
         "href": f"{project}/{slug}.html",
     }
+    # PR / MR は、一覧の札に要る項目だけを、最終更新（at）が新しい順に持たせる。
+    reviews = sorted(data.get("reviews", []), key=lambda review: review["at"], reverse=True)
+    if reviews:
+        row["reviews"] = [{key: review[key] for key in REVIEW_FIELDS} for review in reviews]
+    return row
 
 
 def previous_rows(path):

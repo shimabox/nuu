@@ -18,6 +18,12 @@ window.nuuDashboardData(
   "artifacts": [
     { "name": "移行の記録", "ref": "runbooks/db-migration.md", "at": 1790397000 }
   ],
+  "reviews": [
+    { "provider": "github", "kind": "pr", "number": 301, "title": "移行スクリプトを追加する", "url": "https://github.com/example-infra/platform/pull/301", "state": "merged", "at": 1790389800 },
+    { "provider": "github", "kind": "pr", "number": 298, "title": "旧版との互換モードを残す", "url": "https://github.com/example-infra/platform/pull/298", "state": "closed", "at": 1790386200 },
+    { "provider": "gitlab", "kind": "mr", "number": 87, "title": "本番の移行手順書", "url": "https://gitlab.com/example-infra/runbooks/-/merge_requests/87", "state": "merged", "at": 1790396400 },
+    { "provider": "github", "kind": "pr", "number": 305, "title": "移行後に古い表を消す", "url": "https://github.com/example-infra/platform/pull/305", "state": "draft", "at": 1790397600 }
+  ],
   "panels": [
     {
       "id": "stages",

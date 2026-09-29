@@ -16,6 +16,9 @@ window.nuuDashboardData(
   "questions": [],
   "blockers": [],
   "artifacts": [],
+  "reviews": [
+    { "provider": "gitlab", "kind": "mr", "number": 42, "title": "ログインの成功と失敗を監査ログに書き込む", "url": "https://gitlab.com/example-app/auth/-/merge_requests/42", "state": "draft", "at": 1790600400 }
+  ],
   "panels": [
     {
       "id": "events",
