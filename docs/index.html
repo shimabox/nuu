@@ -289,7 +289,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
             <!-- builder -->
             <rect x="440" y="60" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
             <text x="545" y="92" text-anchor="middle" font-weight="700" font-family="IBM Plex Mono, monospace">dashboard-builder</text>
-            <text x="545" y="114" text-anchor="middle" font-size="12" fill-opacity="0.75">sonnet・パネルを選んでデータを書く</text>
+            <text x="545" y="114" text-anchor="middle" font-size="12" fill-opacity="0.75">opus・パネルを選んでデータを書く</text>
 
             <!-- updater -->
             <rect x="440" y="300" width="210" height="78" rx="10" fill="#14B8A6" fill-opacity="0.12" stroke="#14B8A6"/>
@@ -371,9 +371,9 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
 
     <div class="parts">
       <div class="part">
-        <span class="who">dashboard-builder・sonnet</span>
+        <span class="who">dashboard-builder・opus</span>
         <h3>作業に合わせて、1 枚目を作る</h3>
-        <p>作業の性質を見て、7 種類のパネルから載せるものと並びと中身を選び、作業のデータを書きます。HTML は書きません。初回だけ、好みのテーマ、密度、アクセントカラーを聞き、すべてのダッシュボードに使います。</p>
+        <p>作業の性質を見て、7 種類のパネルから載せるものと並びと中身を選び、作業のデータを書きます。HTML は書きません。初回だけ、好みのテーマ、密度、アクセントカラーを聞き、すべてのダッシュボードに使います。builder と updater のモデルは、頼めば <code>~/.claude/nuu/settings.json</code> に保存して変えられます。</p>
       </div>
       <div class="part">
         <span class="who">dashboard-updater・sonnet</span>
@@ -433,13 +433,13 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <table>
         <thead><tr><th scope="col">場面</th><th scope="col">担当</th><th scope="col">1 回あたり</th><th scope="col">時間</th></tr></thead>
         <tbody>
-          <tr><td>ダッシュボードの用意</td><td><code>dashboard-builder</code>（sonnet）</td><td class="num">約 $0.07</td><td>30 秒前後</td></tr>
+          <tr><td>ダッシュボードの用意</td><td><code>dashboard-builder</code>（opus）</td><td class="num">約 $0.2〜0.3</td><td>25 秒前後</td></tr>
           <tr><td>途中の更新と完了</td><td><code>dashboard-updater</code>（sonnet）</td><td class="num">約 $0.02〜0.03</td><td>10〜20 秒前後</td></tr>
         </tbody>
       </table>
     </div>
     <div class="prose">
-      <p>用意の目安は、Claude Code 2.1.283 で 3 回測った中央値です。会話の記録の都合で料金が少なめに出ることがあり、多めに見ても 1 回約 $0.13 です。builder は HTML を書かず、データだけを書くので、用意を短く済ませられます。</p>
+      <p>用意の目安は、Claude Code 2.1.285 で性質の違う 3 つの作業を 1 回ずつ用意したときの値です。幅は、キャッシュの保持時間（5 分か 1 時間）でキャッシュへの書き込みの単価が変わるためです。同じ測り方で、sonnet の builder は約 $0.1〜0.17、20 秒前後でした。料金を抑えたいときは、builder を sonnet に変えられます。builder は HTML を書かず、データだけを書くので、用意を短く済ませられます。</p>
       <p>途中の更新と完了の目安は、10 通りの作業の流れで 1 回ずつ測った実測です。料金は会話の記録のトークンから推計したもので、記録の都合で少なめに出ることがあります。途中の更新はバックグラウンドで行うので、作業はその時間を待ちません。</p>
       <p class="note">API の単価で計算した目安です。契約の形態によっては、料金ではなく使用量の上限に数えられます。トークン量は、会話の記録の都合でサブエージェントの出力が少なめに出ることがあります。</p>
     </div>
