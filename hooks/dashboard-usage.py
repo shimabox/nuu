@@ -4,6 +4,7 @@
 会話の記録（Claude 本体とサブエージェント）から、ダッシュボードを用意し始めた時刻以降の
 トークン量を合計し、データファイルと同じフォルダーの <作業>.usage.js に書く。
 作業したセッションに戻れるよう、セッションの ID と作業ディレクトリも一緒に書く。
+データファイルを書いたエージェント（dashboard-builder / dashboard-updater）とそのモデルも、前回までの記録に足して書く。
 データファイルはエージェントが編集中のため、このスクリプトは書き換えない。
 集計に失敗してもエージェントの作業は止めない。
 """
@@ -91,6 +92,37 @@ def agent_type(transcript):
         return None
 
 
+def last_model(path):
+    """記録の最後の応答のモデルを返す。Claude Code が合成した応答（<synthetic> など）は除く。"""
+    model = None
+    for entry in read_lines(path):
+        if entry.get("type") != "assistant":
+            continue
+        value = (entry.get("message") or {}).get("model")
+        if isinstance(value, str) and value and not value.startswith("<"):
+            model = value
+    return model
+
+
+def agent_models(existing, own):
+    """エージェントごとに、データファイルを書いたモデルを最初に書いた順で並べる。
+
+    前回までの記録を引き継ぐので、別のセッションで再開して書いた分も残る。
+    """
+    models = {name: [] for name in DASHBOARD_AGENTS}
+    previous = existing.get("agentModels")
+    if isinstance(previous, dict):
+        for name in DASHBOARD_AGENTS:
+            values = previous.get(name)
+            if isinstance(values, list):
+                models[name] = [value for value in values if isinstance(value, str) and value]
+    name = agent_type(own)
+    model = last_model(own)
+    if name in DASHBOARD_AGENTS and model and model not in models[name]:
+        models[name].append(model)
+    return {name: values for name, values in models.items() if values}
+
+
 def read_existing(usage_path):
     try:
         with open(usage_path, encoding="utf-8") as f:
@@ -121,10 +153,10 @@ def main():
     usage_path = target + ".usage.js"
 
     existing = read_existing(usage_path) or {}
+    own = os.path.join(subagents_dir, f"agent-{payload.get('agent_id')}.jsonl")
     since = existing.get("since")
     if since is None:
         # 最初の書き込みは setup の最後に起きるので、setup を始めた時刻から数える。
-        own = os.path.join(subagents_dir, f"agent-{payload.get('agent_id')}.jsonl")
         since = first_timestamp(own) or time.time()
 
     categories = {"main": empty(), "subagents": empty(), "dashboard": empty()}
@@ -152,6 +184,7 @@ def main():
         "totals": totals,
         "byCategory": categories,
         "byModel": by_model,
+        "agentModels": agent_models(existing, own),
     }
     body = json.dumps(data, ensure_ascii=False)
     script = (

@@ -238,7 +238,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
       <li><b>作業の PR / MR</b><span>作業に関係する GitHub の PR と GitLab の MR を、番号、題名、状態（下書き、レビュー中、マージ済み、閉じた）と一緒に載せます。一覧の行の札からも開けます。</span></li>
-      <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。上部と一覧には、大半を占めるキャッシュの読み込みを除いた量を出し、合計は下部に並べます。</span></li>
+      <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。上部と一覧には、大半を占めるキャッシュの読み込みを除いた量を出し、合計は下部に並べます。ダッシュボードを作成・更新したモデルも並べます。</span></li>
       <li><b>作業したセッションに戻る</b><span>セッションの ID と、<code>claude --resume</code> で再開するコマンドを載せます。コピーして、作業した会話に戻れます。</span></li>
       <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
       <li><b>ブラウザで開くだけ</b><span>サーバーもツールも要りません。HTML を開けばブラウザで見られ、10 秒ごとにデータだけを読み直します。ページごと再読み込みしないので、ちらつかず、スクロール位置もそのままです。</span></li>
@@ -251,6 +251,10 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     <figure class="shot">
       <img src="images/dashboard-session.png" width="1280" height="398" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く">
       <figcaption>ページの下部にあるセッションの欄。コマンドをコピーして、作業した会話に戻れます。</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="images/dashboard-usage.png" width="1280" height="565" alt="トークン量の欄。キャッシュの読み込みを除いた量と合計の下に、作業本体・ほかのサブエージェント・ダッシュボードの作成と更新の内訳と、入力・出力・キャッシュの種類が並び、その下の「ダッシュボードのモデル」に作成（builder）の Opus 5.5 と更新（updater）の Sonnet 5.5 が並ぶ">
+      <figcaption>ページの下部にあるトークン量の欄。ダッシュボードを作成・更新したモデルも並びます。</figcaption>
     </figure>
   </section>
 

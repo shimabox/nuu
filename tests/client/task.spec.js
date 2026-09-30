@@ -26,6 +26,7 @@ function usage(overrides = {}) {
     totals: { input: 18420, output: 64310, cacheRead: 812400, cacheWrite: 64820, total: 959950 },
     byCategory: { main: part(691400), subagents: part(198500), dashboard: part(70050) },
     byModel: { 'claude-sample': 959950 },
+    agentModels: { 'dashboard-builder': ['claude-opus-5-5'], 'dashboard-updater': ['claude-sonnet-5-5'] },
   }, overrides);
 }
 
@@ -457,6 +458,49 @@ test.describe('セッションとコピー', () => {
 });
 
 test.describe('トークン量', () => {
+  test('ダッシュボードを作成・更新したモデルを、エージェントごとに短い名前で出す', async ({ page }) => {
+    await openAt(page, board.taskUrl());
+    const group = page.locator('#usage [data-role="agent-models"]');
+    await expect(group.locator('.nuu-h3')).toHaveText('ダッシュボードのモデル');
+    await expect(group.locator('dt')).toHaveText(['作成（builder）', '更新（updater）']);
+    await expect(page.locator('[data-role="model-builder"]')).toHaveText('Opus 5.5');
+    await expect(page.locator('[data-role="model-builder"]')).toHaveAttribute('title', 'claude-opus-5-5');
+    await expect(page.locator('[data-role="model-updater"]')).toHaveText('Sonnet 5.5');
+
+    // 途中でモデルを変えたときは、書いた順にすべて出す。
+    board.writeUsage(SAMPLE, usage({ agentModels: { 'dashboard-builder': ['claude-opus-5-5'], 'dashboard-updater': ['claude-sonnet-5-5', 'claude-haiku-4-5-20251001'] } }));
+    await nextPoll(page);
+    await expect(page.locator('[data-role="model-updater"]')).toHaveText('Sonnet 5.5、Haiku 4.5');
+    await expect(page.locator('[data-role="model-updater"]')).toHaveAttribute('title', 'claude-sonnet-5-5、claude-haiku-4-5-20251001');
+  });
+
+  test('モデルの記録がない、または壊れているときは「記録なし」と出す', async ({ page }) => {
+    const missing = usage();
+    delete missing.agentModels;
+    board.writeUsage(SAMPLE, missing);
+    await openAt(page, board.taskUrl());
+    await expect(page.locator('[data-role="model-builder"]')).toHaveText('記録なし');
+    await expect(page.locator('[data-role="model-updater"]')).toHaveText('記録なし');
+
+    // 文字列でない値は数えない。有効な ID が残れば、それだけを出す。
+    board.writeUsage(SAMPLE, usage({ agentModels: { 'dashboard-builder': 'claude-opus-5-5', 'dashboard-updater': [null, 3, ''] } }));
+    await nextPoll(page);
+    await expect(page.locator('[data-role="model-builder"]')).toHaveText('記録なし');
+    await expect(page.locator('[data-role="model-updater"]')).toHaveText('記録なし');
+
+    board.writeUsage(SAMPLE, usage({ agentModels: { 'dashboard-builder': [3, 'claude-opus-5-5'], 'dashboard-updater': [] } }));
+    await nextPoll(page);
+    await expect(page.locator('[data-role="model-builder"]')).toHaveText('Opus 5.5');
+    await expect(page.locator('[data-role="model-updater"]')).toHaveText('記録なし');
+  });
+
+  test('モデルの ID は、形が合えば短い名前に、合わなければそのまま出す', async ({ page }) => {
+    await openAt(page, board.taskUrl());
+    const names = await page.evaluate(() => ['claude-opus-5-5', 'claude-haiku-4-5-20251001', 'claude-fable-5-1', 'claude-sonnet-5', 'gpt-6-sol', 'claude-test']
+      .map(window.NUU.format.model));
+    expect(names).toEqual(['Opus 5.5', 'Haiku 4.5', 'Fable 5.1', 'Sonnet 5', 'gpt-6-sol', 'claude-test']);
+  });
+
   test('.usage.js がないときは「集計前」と出し、ページは壊れない', async ({ page }) => {
     board.remove(`${SAMPLE}.usage.js`);
     await openAt(page, board.taskUrl());
