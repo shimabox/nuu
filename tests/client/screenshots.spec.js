@@ -1,6 +1,6 @@
 // fixtures の架空の作業から画面の画像を撮る。通常のテストでは飛ばす。
 // - 好みの組み合わせごとの確認用: NUU_SHOTS_DIR=/tmp/shots npx playwright test screenshots --project=chromium
-// - README と説明ページの画像（docs/images/ の 4 枚）: NUU_DOCS_IMAGES=1 npx playwright test screenshots --project=chromium
+// - README と説明ページの画像（docs/images/ の 5 枚）: NUU_DOCS_IMAGES=1 npx playwright test screenshots --project=chromium
 const path = require('path');
 const fs = require('fs');
 const { test, expect } = require('@playwright/test');
@@ -51,6 +51,11 @@ test.describe('説明ページの画像', () => {
       // セッションの欄だけを切り出す。
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-session.png'), fullPage: true,
         clip: await band(page, '#session', '#session') });
+
+      // トークン量の欄だけを切り出す。ダッシュボードのモデルもこの欄に出る。
+      await expect(page.locator('[data-role="model-builder"]')).toHaveText('Opus 5.5');
+      await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-usage.png'), fullPage: true,
+        clip: await band(page, '#usage', '#usage') });
 
       // スマホの幅: 上端から 1000px。上部の要約と PR / MR の欄が収まらなければ、収まるところまで伸ばす。
       await page.setViewportSize({ width: 390, height: 844 });

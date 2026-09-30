@@ -967,7 +967,7 @@ sizes = {}
 for src, width, height in found:
     with open(os.path.join(docs, src), "rb") as f:
         sizes[src] = struct.unpack(">II", f.read(24)[16:24]) == (int(width), int(height))
-sys.exit(0 if len(sizes) == 4 and all(sizes.values()) else 1)
+sys.exit(0 if len(sizes) == 5 and all(sizes.values()) else 1)
 PY
 check '作業ごとの画像はページ全体でなく上部だけを切り取る' python3 - "$ROOT/docs/images" <<'PY'
 import os, struct, sys
@@ -979,7 +979,7 @@ width, height = size("dashboard-desktop.png")
 # 上端から手順のカンバンの終わりまで。作業の様子のパネルやセッションの欄までは入れない。
 sys.exit(0 if width == 1280 and 1100 <= height <= 1400 and size("dashboard-mobile.png") == (390, 1000) else 1)
 PY
-for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png; do
+for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png dashboard-usage.png; do
   check "README に ${image} を載せる" grep -qF "docs/images/${image}" "$ROOT/README.md"
 done
 for file in README.md docs/index.html; do

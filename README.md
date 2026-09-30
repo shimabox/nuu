@@ -31,6 +31,12 @@ Claude Code で長い作業をするときに、進み具合を 1 枚の HTML �
   <tr>
     <td colspan="2"><img src="docs/images/dashboard-session.png" alt="セッションの欄。セッションの ID、作業ディレクトリ、claude --resume で再開するコマンドが並び、ID とコマンドにはコピーのボタンが付く"></td>
   </tr>
+  <tr>
+    <th colspan="2">作業ごとのダッシュボードの下部にある、トークン量の欄</th>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/dashboard-usage.png" alt="トークン量の欄。キャッシュの読み込みを除いた量と合計の下に、作業本体・ほかのサブエージェント・ダッシュボードの作成と更新の内訳と、入力・出力・キャッシュの種類が並び、その下の「ダッシュボードのモデル」に作成（builder）の Opus 5.5 と更新（updater）の Sonnet 5.5 が並ぶ"></td>
+  </tr>
 </table>
 
 画像は、架空の通販サイトの作業で作った見本です。見た目は固定で、テーマ、密度、アクセントカラー、タスクの表示を好みで変えられます。作業に合わせて変わるのは、載せるパネルの種類、並び、中身です。
