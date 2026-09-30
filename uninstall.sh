@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # install.sh で作ったリンクと、~/.claude/CLAUDE.md の読み込みの 1 行を外し、nuu のサブエージェントを使えなくする。
-# --purge を付けると、保存した好みのスタイル（エージェントのメモリ）、ダッシュボード、
-# vendor/impeccable も消す。リポジトリ自体は消さない。
+# --purge を付けると、~/.claude/nuu/dashboards/ のダッシュボードと好みのスタイルも消す。リポジトリ自体は消さない。
 
 set -euo pipefail
 
@@ -10,6 +9,7 @@ readonly REPO_DIR
 readonly CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
 readonly RULE_HEADING='## 長い作業の進捗ダッシュボード'
+readonly DASHBOARDS="$HOME/.claude/nuu/dashboards"
 
 purge=false
 case "${1:-}" in
@@ -35,24 +35,15 @@ unlink_one() {
   fi
 }
 
-remove_dir() {
-  local dir="$1"
-
-  if [[ -d "$dir" ]]; then
-    rm -rf "$dir"
-    printf 'REMOVE %s\n' "$dir"
-  else
-    printf 'OK     %s（ありません）\n' "$dir"
-  fi
-}
-
 unlink_one "$REPO_DIR/agents/dashboard-builder.md" "$HOME/.claude/agents/dashboard-builder.md"
 unlink_one "$REPO_DIR/agents/dashboard-updater.md" "$HOME/.claude/agents/dashboard-updater.md"
 unlink_one "$REPO_DIR/hooks/dashboard-guard.sh" "$HOME/.claude/hooks/dashboard-guard.sh"
+unlink_one "$REPO_DIR/hooks/dashboard-page.py" "$HOME/.claude/hooks/dashboard-page.py"
 unlink_one "$REPO_DIR/hooks/dashboard-usage.py" "$HOME/.claude/hooks/dashboard-usage.py"
 unlink_one "$REPO_DIR/hooks/dashboard-validate.py" "$HOME/.claude/hooks/dashboard-validate.py"
-unlink_one "$REPO_DIR/vendor/impeccable/plugin/skills/impeccable" "$HOME/.claude/nuu/impeccable"
 unlink_one "$REPO_DIR/claude-instructions.md" "$HOME/.claude/nuu/claude-instructions.md"
+# 固定クライアントへのリンクを先に外す。--purge で消すときも、リンクの先のリポジトリには触れない。
+unlink_one "$REPO_DIR/client" "$DASHBOARDS/_client"
 
 if [[ -f "$CLAUDE_MD" ]] && grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"; then
   # 読み込みの 1 行だけを消す。シンボリックリンクでも実体へ書き戻す。
@@ -66,15 +57,20 @@ else
 fi
 
 if [[ "$purge" == true ]]; then
-  remove_dir "$HOME/.claude/agent-memory/dashboard-builder"
-  remove_dir "$HOME/.claude/nuu/dashboards"
-  remove_dir "$REPO_DIR/vendor/impeccable"
+  if [[ -d "$DASHBOARDS" ]]; then
+    rm -rf "$DASHBOARDS"
+    printf 'REMOVE %s\n' "$DASHBOARDS"
+  else
+    printf 'OK     %s（ありません）\n' "$DASHBOARDS"
+  fi
 fi
+# 空になったフォルダーだけを消す。ダッシュボードが残っていれば消さない。
+rmdir "$DASHBOARDS" 2>/dev/null || true
 rmdir "$HOME/.claude/nuu" 2>/dev/null || true
 
 if [[ -f "$CLAUDE_MD" ]] && grep -qxF "$RULE_HEADING" "$CLAUDE_MD"; then
   printf '\n%s に、ルールをコピーした「%s」の節が残っています。不要なら手で消してください。\n' "$CLAUDE_MD" "$RULE_HEADING"
 fi
-if [[ "$purge" != true ]]; then
-  printf '\n~/.claude/nuu/dashboards/ のダッシュボードは残しています（--purge を付けると消します）。\n'
+if [[ -d "$DASHBOARDS" ]]; then
+  printf '\n%s のダッシュボードと好みのスタイルは残しています（--purge を付けると消します）。\n' "$DASHBOARDS"
 fi

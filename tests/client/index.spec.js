@@ -1,0 +1,188 @@
+// 一覧のページ（client/index.html）を file:// で開いて確かめる。
+const { test, expect } = require('@playwright/test');
+const { makeDashboards, openAt, nextPoll, readFixture, watchRequests, SAMPLE_UPDATED } = require('./helpers');
+
+let board;
+test.beforeEach(() => {
+  board = makeDashboards();
+});
+test.afterEach(() => {
+  board.cleanup();
+});
+
+const index = () => readFixture('index.data.js');
+const titles = (page, group) => page.locator(`.nuu-group[data-group="${group}"] .nuu-row-title`);
+
+// 一覧の行のトークン量を読み終えるまで待つ（行ごとの .usage.js は一覧のデータのあとに読む）。
+async function openIndex(page, seconds) {
+  await openAt(page, board.indexUrl(), seconds);
+  await expect(page.locator('.nuu-row[data-key="sample-shop/2026-09-28-2252-search-filters"] [data-role="row-tokens"]')).toContainText('14.8 万');
+}
+
+test('進行中、中断中、完了の順に分け、それぞれ最終更新が新しい順に並べる', async ({ page }) => {
+  await openIndex(page);
+  await expect(page.locator('.nuu-group')).toHaveCount(3);
+  expect(await page.locator('.nuu-group').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-group')))).toEqual(['active', 'paused', 'done']);
+  await expect(titles(page, 'active')).toHaveText(['商品検索に価格・在庫・評価の絞り込みを追加する', 'ログインの監査ログを残す', '始めたばかりの作業']);
+  await expect(titles(page, 'paused')).toHaveText(['API の利用ガイドを書き直す']);
+  await expect(titles(page, 'done')).toHaveText(['バックアップの戻し方を確かめる', 'データベースを新しい版へ移す']);
+});
+
+test('知らない status の作業は進行中に並べる', async ({ page }) => {
+  const data = index();
+  data.items[0].status = 'archived';
+  board.writeIndex(data);
+  await openIndex(page);
+  await expect(titles(page, 'active')).toContainText(['データベースを新しい版へ移す']);
+  await expect(page.locator('.nuu-row[data-key="sample-infra/2026-09-26-0930-db-migration"] [data-status="active"]')).toHaveText('進行中');
+});
+
+test('進行中で 15 分以上更新がない作業だけを目立たせる', async ({ page }) => {
+  await openIndex(page);
+  const row = (key) => page.locator(`.nuu-row[data-key="${key}"]`);
+  await expect(row('sample-shop/2026-09-28-2252-search-filters')).not.toHaveAttribute('data-stale');
+  await expect(row('sample-app/2026-09-28-1905-login-audit')).toHaveAttribute('data-stale', '');
+  await expect(row('sample-app/2026-09-28-1905-login-audit').locator('[data-role="stale"]')).toBeVisible();
+  await expect(row('sample-docs/2026-09-27-1010-api-guide')).not.toHaveAttribute('data-stale');
+  await expect(row('sample-infra/2026-09-26-0930-db-migration')).not.toHaveAttribute('data-stale');
+  await expect(row('sample-shop/2026-09-28-2252-search-filters').locator('[data-role="stale"]')).toBeHidden();
+
+  // 時間が進めば、見本の作業も止まっているとみなす。
+  await page.clock.runFor(15 * 60 * 1000);
+  await expect(row('sample-shop/2026-09-28-2252-search-filters')).toHaveAttribute('data-stale', '');
+});
+
+test('作業ごとのトークン量（キャッシュの読み込みを除く）とセッションの ID の先頭 8 文字を出す', async ({ page }) => {
+  await openIndex(page);
+  const shop = page.locator('.nuu-row[data-key="sample-shop/2026-09-28-2252-search-filters"]');
+  await expect(shop.locator('[data-role="row-tokens"]')).toHaveText('14.8 万147,550');
+  await expect(shop.locator('[data-role="session-short"]')).toHaveText('セッション 7c1e4a92');
+  const app = page.locator('.nuu-row[data-key="sample-app/2026-09-28-1905-login-audit"]');
+  await expect(app.locator('[data-role="row-tokens"]')).toHaveText('4.7 万46,500');
+  await expect(app.locator('[data-role="session-short"]')).toHaveText('セッション 0f9d2c41');
+  const docs = page.locator('.nuu-row[data-key="sample-docs/2026-09-27-1010-api-guide"]');
+  await expect(docs.locator('[data-role="row-tokens"]')).toHaveText('集計前');
+  await expect(docs.locator('[data-role="session-short"]')).toHaveCount(0);
+});
+
+test('状態ごとの件数の下に、トークン量がキャッシュの読み込みを除いた量だと常に添える', async ({ page }) => {
+  await openIndex(page);
+  const note = page.locator('.nuu-summary-strip [data-role="token-note"]');
+  await expect(note).toHaveText('トークン量は、キャッシュの読み込みを除いた量です');
+  await expect(note).toBeVisible();
+  // 件数の札より下の行に出る。
+  const chip = await page.locator('.nuu-overview').last().boundingBox();
+  const box = await note.boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(chip.y + chip.height);
+});
+
+test('キャッシュの読み込みがない行は合計をそのまま、合計より大きい行は 0 を出す', async ({ page }) => {
+  const shop = 'sample-shop/2026-09-28-2252-search-filters';
+  const app = 'sample-app/2026-09-28-1905-login-audit';
+  board.writeUsage(shop, { since: 1, totals: { input: 18420, output: 64310, cacheWrite: 64820, total: 959950 } });
+  board.writeUsage(app, { since: 1, totals: { input: 0, output: 0, cacheRead: 336501, cacheWrite: 0, total: 336500 } });
+  await openAt(page, board.indexUrl());
+  await expect(page.locator(`.nuu-row[data-key="${shop}"] [data-role="row-tokens"]`)).toHaveText('96 万959,950');
+  await expect(page.locator(`.nuu-row[data-key="${app}"] [data-role="row-tokens"]`)).toHaveText('00');
+});
+
+test('行から作業のページへ移れる。形の違う href はリンクにしない', async ({ page }) => {
+  const data = index();
+  data.items.push({ project: 'evil', slug: 'x', title: '<b>悪い行</b>', status: 'active', done: 0, total: 0, questions: 0, blockers: 0, startedAt: 1790603523, updatedAt: 1790603523, href: 'javascript:alert(1)' });
+  data.items.push({ project: 'evil', slug: 'y', title: '外へのリンク', status: 'active', done: 0, total: 0, questions: 0, blockers: 0, startedAt: 1790603523, updatedAt: 1790603523, href: 'https://example.com/y.html' });
+  board.writeIndex(data);
+  await openIndex(page);
+  await expect(page.locator('a.nuu-row-title[href="sample-shop/2026-09-28-2252-search-filters.html"]')).toHaveCount(1);
+  // https: のリンクは PR / MR の札だけ。行のタイトルは外へのリンクにしない。
+  await expect(page.locator('a[href^="javascript" i], a.nuu-row-title[href^="https:"]')).toHaveCount(0);
+  await expect(page.locator('.nuu-row[data-key="evil/x"] .nuu-row-title')).toHaveText('<b>悪い行</b>');
+  await page.locator('a.nuu-row-title[href="sample-shop/2026-09-28-2252-search-filters.html"]').click();
+  await expect(page.locator('[data-page="task"] .nuu-title')).toHaveText('商品検索に価格・在庫・評価の絞り込みを追加する');
+});
+
+test('行に PR / MR の札を出し、押すとその PR / MR を新しいタブで開く。多いときは先頭の 3 件と「ほか n 件」にする', async ({ page }) => {
+  await openIndex(page);
+  const chips = (key) => page.locator(`.nuu-row[data-key="${key}"] .nuu-review-chip`);
+  const shop = chips('sample-shop/2026-09-28-2252-search-filters');
+  await expect(shop).toHaveText(['PR #128']);
+  await expect(shop).toHaveAttribute('href', 'https://github.com/example-shop/storefront/pull/128');
+  await expect(shop).toHaveAttribute('target', '_blank');
+  await expect(shop).toHaveAttribute('rel', 'noopener');
+  await expect(shop).toHaveAttribute('data-state', 'open');
+  await expect(shop).toHaveAttribute('title', 'GitHub PR #128（レビュー中）');
+  await expect(chips('sample-app/2026-09-28-1905-login-audit')).toHaveText(['MR !42']);
+  await expect(chips('sample-app/2026-09-28-1905-login-audit')).toHaveAttribute('data-state', 'draft');
+
+  const migration = page.locator('.nuu-row[data-key="sample-infra/2026-09-26-0930-db-migration"]');
+  await expect(migration.locator('.nuu-review-chip')).toHaveText(['PR #305', 'MR !87', 'PR #301']);
+  await expect(migration.locator('.nuu-review-more')).toHaveText('ほか 1 件');
+  await expect(migration.locator('.nuu-review-more')).toHaveAttribute('href', 'sample-infra/2026-09-26-0930-db-migration.html#reviews');
+  await expect(page.locator('.nuu-row[data-key="sample-docs/2026-09-27-1010-api-guide"] [data-role="row-reviews"]')).toHaveCount(0);
+
+  // 札は行全体のリンクより手前にあり、押すと行のリンクではなく札のリンクが働く。
+  const onTop = await shop.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    return node.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+  });
+  expect(onTop).toBe(true);
+
+  await migration.locator('.nuu-review-more').click();
+  await expect(page.locator('[data-page="task"] .nuu-title')).toHaveText('データベースを新しい版へ移す');
+  await expect(page.locator('#reviews .nuu-review')).toHaveCount(4);
+});
+
+test('一覧の札も https: 以外の URL はリンクにしない', async ({ page }) => {
+  const data = index();
+  const row = data.items.find((item) => item.project === 'sample-app');
+  row.reviews = [
+    { provider: 'gitlab', kind: 'mr', number: 1, url: 'javascript:alert(1)', state: 'open' },
+    { provider: 'github', kind: 'pr', number: 2, url: 'http://github.com/example/app/pull/2', state: 'merged' },
+  ];
+  board.writeIndex(data);
+  await openIndex(page);
+  const chips = page.locator('.nuu-row[data-key="sample-app/2026-09-28-1905-login-audit"] .nuu-review-chip');
+  await expect(chips).toHaveText(['MR !1', 'PR #2']);
+  expect(await chips.evaluateAll((nodes) => nodes.map((n) => n.tagName))).toEqual(['SPAN', 'SPAN']);
+  await expect(page.locator('a[href^="javascript" i], a[href^="http:"]')).toHaveCount(0);
+});
+
+test('一覧のデータを書き換えると、再読み込みせずに行が変わる', async ({ page }) => {
+  await openIndex(page);
+  await page.evaluate(() => { window.__marker = 'same page'; });
+  const data = index();
+  data.items = data.items.filter((item) => item.project !== 'sample-min');
+  data.items.find((item) => item.project === 'sample-docs').status = 'active';
+  data.items.find((item) => item.project === 'sample-docs').updatedAt = SAMPLE_UPDATED + 30;
+  board.writeIndex(data);
+  await nextPoll(page);
+  await expect(titles(page, 'active')).toHaveText(['API の利用ガイドを書き直す', '商品検索に価格・在庫・評価の絞り込みを追加する', 'ログインの監査ログを残す']);
+  await expect(page.locator('.nuu-group[data-group="paused"]')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__marker)).toBe('same page');
+});
+
+test('一覧のデータも 3 回続けて読めなかったときだけ警告を出す', async ({ page }) => {
+  await openIndex(page);
+  board.remove('index.data.js');
+  await nextPoll(page);
+  await nextPoll(page);
+  await expect(page.locator('[data-role="load-warning"]')).toBeHidden();
+  await nextPoll(page);
+  await expect(page.locator('[data-role="load-warning"]')).toContainText('index.data.js');
+  await expect(page.locator('.nuu-row')).toHaveCount(6);
+});
+
+test('好みを変えると一覧の見た目も変わる', async ({ page }) => {
+  await openIndex(page);
+  board.writePrefs({ schema: 1, theme: 'light', density: 'dense', accent: '#0EA5E9', taskView: 'list' });
+  await page.clock.runFor(10_000);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('html')).toHaveAttribute('data-density', 'dense');
+});
+
+test('favicon があり、file: と data: 以外の URL を読み込まない', async ({ page }) => {
+  const { requests, external } = await watchRequests(page);
+  await openIndex(page);
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /^data:image\/svg\+xml,/);
+  expect(requests.filter((url) => !/^(file|data):/.test(url))).toEqual([]);
+  expect(external).toEqual([]);
+});

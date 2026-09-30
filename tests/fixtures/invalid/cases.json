@@ -1,0 +1,380 @@
+[
+  {
+    "file": "bad/syntax.data.js",
+    "as": "bad/syntax.data.js",
+    "reason": "JSON の 1 行目",
+    "what": "JSON の構文が壊れている"
+  },
+  {
+    "file": "bad/bare.data.js",
+    "as": "bad/bare.data.js",
+    "reason": "1 行目を window.nuuDashboardData(",
+    "what": "包みがない"
+  },
+  {
+    "file": "bad/lead-blank.data.js",
+    "as": "bad/lead-blank.data.js",
+    "reason": "前後に空行",
+    "what": "1 行目の前に空行がある"
+  },
+  {
+    "file": "bad/trail-text.data.js",
+    "as": "bad/trail-text.data.js",
+    "reason": "最終行を );",
+    "what": "最終行のあとに文字がある"
+  },
+  {
+    "file": "bad/unknown-key.data.js",
+    "as": "bad/unknown-key.data.js",
+    "reason": "知らない項目 \"layout\"",
+    "what": "知らない項目がある"
+  },
+  {
+    "file": "bad/missing-tasks.data.js",
+    "as": "bad/missing-tasks.data.js",
+    "reason": "項目 tasks がありません",
+    "what": "必須の項目がない"
+  },
+  {
+    "file": "bad/schema-2.data.js",
+    "as": "bad/schema-2.data.js",
+    "reason": "schema: 1 にしてください",
+    "what": "schema が 1 でない"
+  },
+  {
+    "file": "bad/bad-status.data.js",
+    "as": "bad/bad-status.data.js",
+    "reason": "status: \"running\" は使えません",
+    "what": "作業の状態の語彙が違う"
+  },
+  {
+    "file": "bad/bad-task-state.data.js",
+    "as": "bad/bad-task-state.data.js",
+    "reason": "tasks[0].status: \"progress\" は使えません",
+    "what": "手順の状態の語彙が違う"
+  },
+  {
+    "file": "bad/ms-time.data.js",
+    "as": "bad/ms-time.data.js",
+    "reason": "ミリ秒",
+    "what": "時刻がミリ秒"
+  },
+  {
+    "file": "bad/string-time.data.js",
+    "as": "bad/string-time.data.js",
+    "reason": "startedAt: UNIX 秒の整数",
+    "what": "時刻が文字列"
+  },
+  {
+    "file": "bad/updated-before-started.data.js",
+    "as": "bad/updated-before-started.data.js",
+    "reason": "startedAt より前にできません",
+    "what": "更新が開始より前"
+  },
+  {
+    "file": "bad/project-mismatch.data.js",
+    "as": "bad/project-mismatch.data.js",
+    "reason": "フォルダーの名前 \"bad\"",
+    "what": "project がパスと違う"
+  },
+  {
+    "file": "bad/slug-mismatch.data.js",
+    "as": "bad/slug-mismatch.data.js",
+    "reason": "ファイル名から .data.js を除いた \"slug-mismatch\"",
+    "what": "slug がパスと違う"
+  },
+  {
+    "file": "bad/dup-task-id.data.js",
+    "as": "bad/dup-task-id.data.js",
+    "reason": "id 1 が重複",
+    "what": "手順の id が重複"
+  },
+  {
+    "file": "bad/bad-task-id.data.js",
+    "as": "bad/bad-task-id.data.js",
+    "reason": "tasks[0].id: 1 以上の整数",
+    "what": "手順の id が整数でない"
+  },
+  {
+    "file": "bad/title-too-long.data.js",
+    "as": "bad/title-too-long.data.js",
+    "reason": "title: 120 文字以内",
+    "what": "タイトルが長すぎる"
+  },
+  {
+    "file": "bad/too-many-tasks.data.js",
+    "as": "bad/too-many-tasks.data.js",
+    "reason": "tasks: 60 件以内",
+    "what": "手順が多すぎる"
+  },
+  {
+    "file": "bad/answered-at-alone.data.js",
+    "as": "bad/answered-at-alone.data.js",
+    "reason": "answer と一緒に",
+    "what": "回答なしの回答時刻"
+  },
+  {
+    "file": "bad/proceeding-string.data.js",
+    "as": "bad/proceeding-string.data.js",
+    "reason": "proceeding: true か false",
+    "what": "proceeding が真偽値でない"
+  },
+  {
+    "file": "bad/blocker-missing-next.data.js",
+    "as": "bad/blocker-missing-next.data.js",
+    "reason": "blockers[0]: 項目 next がありません",
+    "what": "止まっているものの次の手がない"
+  },
+  {
+    "file": "bad/unknown-panel.data.js",
+    "as": "bad/unknown-panel.data.js",
+    "reason": "panels[0].type: \"chart\" は使えません",
+    "what": "知らないパネルの種類"
+  },
+  {
+    "file": "bad/panel-bad-id.data.js",
+    "as": "bad/panel-bad-id.data.js",
+    "reason": "英小文字、数字、- だけ",
+    "what": "パネルの id の形が違う"
+  },
+  {
+    "file": "bad/dup-panel-id.data.js",
+    "as": "bad/dup-panel-id.data.js",
+    "reason": "id \"p\" が重複",
+    "what": "パネルの id が重複"
+  },
+  {
+    "file": "bad/panel-unknown-key.data.js",
+    "as": "bad/panel-unknown-key.data.js",
+    "reason": "知らない項目 \"color\"",
+    "what": "パネルに知らない項目"
+  },
+  {
+    "file": "bad/progress-over.data.js",
+    "as": "bad/progress-over.data.js",
+    "reason": "value は 0 以上 total 以下",
+    "what": "progress の値が合計を超える"
+  },
+  {
+    "file": "bad/grid-bad-state.data.js",
+    "as": "bad/grid-bad-state.data.js",
+    "reason": "panels[0].items[0].state: \"ok\" は使えません",
+    "what": "grid の状態の語彙が違う"
+  },
+  {
+    "file": "bad/table-row-length.data.js",
+    "as": "bad/table-row-length.data.js",
+    "reason": "セルの数を列の数 2 とそろえて",
+    "what": "table の行と列の数が合わない"
+  },
+  {
+    "file": "bad/table-bad-cell.data.js",
+    "as": "bad/table-bad-cell.data.js",
+    "reason": "rows[0][0]: 文字列、数値",
+    "what": "table のセルの形が違う"
+  },
+  {
+    "file": "bad/keyvalue-bad-value.data.js",
+    "as": "bad/keyvalue-bad-value.data.js",
+    "reason": "items[0].value: 数値にしてください",
+    "what": "keyvalue の値が真偽値"
+  },
+  {
+    "file": "bad/text-empty.data.js",
+    "as": "bad/text-empty.data.js",
+    "reason": "body: 空にできません",
+    "what": "text の本文が空"
+  },
+  {
+    "file": "bad/trend-order.data.js",
+    "as": "bad/trend-order.data.js",
+    "reason": "at の昇順",
+    "what": "trend の点が時刻順でない"
+  },
+  {
+    "file": "bad/trend-series-limit.data.js",
+    "as": "bad/trend-series-limit.data.js",
+    "reason": "series: 4 件以内",
+    "what": "trend の系列が多すぎる"
+  },
+  {
+    "file": "bad/trend-points-limit.data.js",
+    "as": "bad/trend-points-limit.data.js",
+    "reason": "50 件以内にしてください（今は 51 件）。古い点から落として",
+    "what": "trend の点が多すぎる"
+  },
+  {
+    "file": "bad/trend-ms.data.js",
+    "as": "bad/trend-ms.data.js",
+    "reason": "ミリ秒",
+    "what": "trend の時刻がミリ秒"
+  },
+  {
+    "file": "bad/flow-steps-limit.data.js",
+    "as": "bad/flow-steps-limit.data.js",
+    "reason": "steps: 12 件以内",
+    "what": "flow の段階が多すぎる"
+  },
+  {
+    "file": "bad/review-http-url.data.js",
+    "as": "bad/review-http-url.data.js",
+    "reason": "reviews[0].url: \"http://github.com/example/app/pull/7\" は使えません。https:// で始まり",
+    "what": "PR の URL が http"
+  },
+  {
+    "file": "bad/review-js-url.data.js",
+    "as": "bad/review-js-url.data.js",
+    "reason": "reviews[0].url: \"javascript:alert(1)\" は使えません",
+    "what": "PR の URL が javascript:"
+  },
+  {
+    "file": "bad/review-github-mr.data.js",
+    "as": "bad/review-github-mr.data.js",
+    "reason": "reviews[0].kind: provider が github なら pr にしてください",
+    "what": "GitHub なのに MR"
+  },
+  {
+    "file": "bad/review-gitlab-pr.data.js",
+    "as": "bad/review-gitlab-pr.data.js",
+    "reason": "reviews[0].kind: provider が gitlab なら mr にしてください",
+    "what": "GitLab なのに PR"
+  },
+  {
+    "file": "bad/review-dup-url.data.js",
+    "as": "bad/review-dup-url.data.js",
+    "reason": "reviews[1].url: \"https://github.com/example/app/pull/7\" が重複しています。同じ PR / MR は 1 つにまとめ",
+    "what": "PR の URL が重複"
+  },
+  {
+    "file": "bad/review-unknown-key.data.js",
+    "as": "bad/review-unknown-key.data.js",
+    "reason": "reviews[0]: 知らない項目 \"labels\"",
+    "what": "PR に知らない項目"
+  },
+  {
+    "file": "bad/review-bad-state.data.js",
+    "as": "bad/review-bad-state.data.js",
+    "reason": "reviews[0].state: \"approved\" は使えません。draft / open / merged / closed",
+    "what": "PR の状態の語彙が違う"
+  },
+  {
+    "file": "bad/review-bad-number.data.js",
+    "as": "bad/review-bad-number.data.js",
+    "reason": "reviews[0].number: 1 以上の整数",
+    "what": "PR の番号が 0"
+  },
+  {
+    "file": "bad/review-ms-time.data.js",
+    "as": "bad/review-ms-time.data.js",
+    "reason": "reviews[0].at: 1790604000000 はミリ秒",
+    "what": "PR の時刻がミリ秒"
+  },
+  {
+    "file": "bad/review-title-too-long.data.js",
+    "as": "bad/review-title-too-long.data.js",
+    "reason": "reviews[0].title: 200 文字以内",
+    "what": "PR の題名が長すぎる"
+  },
+  {
+    "file": "bad/review-url-too-long.data.js",
+    "as": "bad/review-url-too-long.data.js",
+    "reason": "reviews[0].url: 500 文字以内",
+    "what": "PR の URL が長すぎる"
+  },
+  {
+    "file": "bad/review-too-many.data.js",
+    "as": "bad/review-too-many.data.js",
+    "reason": "reviews: 20 件以内にしてください（今は 21 件）。マージ済みか閉じたもののうち",
+    "what": "PR / MR が多すぎる"
+  },
+  {
+    "file": "bad/review-not-array.data.js",
+    "as": "bad/review-not-array.data.js",
+    "reason": "reviews: 配列にしてください",
+    "what": "reviews が配列でない"
+  },
+  {
+    "file": "bad/deeper/nested.data.js",
+    "as": "bad/deeper/nested.data.js",
+    "reason": "置き場所",
+    "what": "置き場所の深さが違う"
+  },
+  {
+    "file": "prefs/bad-accent.data.js",
+    "as": "prefs.data.js",
+    "reason": "# と 16 進 6 桁",
+    "what": "accent が色の名前"
+  },
+  {
+    "file": "prefs/short-accent.data.js",
+    "as": "prefs.data.js",
+    "reason": "# と 16 進 6 桁",
+    "what": "accent が 3 桁"
+  },
+  {
+    "file": "prefs/bad-theme.data.js",
+    "as": "prefs.data.js",
+    "reason": "theme: \"sepia\" は使えません",
+    "what": "theme の語彙が違う"
+  },
+  {
+    "file": "prefs/bad-density.data.js",
+    "as": "prefs.data.js",
+    "reason": "density: \"compact\" は使えません",
+    "what": "density の語彙が違う"
+  },
+  {
+    "file": "prefs/bad-view.data.js",
+    "as": "prefs.data.js",
+    "reason": "taskView: \"board\" は使えません",
+    "what": "taskView の語彙が違う"
+  },
+  {
+    "file": "prefs/unknown-key.data.js",
+    "as": "prefs.data.js",
+    "reason": "知らない項目 \"font\"",
+    "what": "好みに知らない項目"
+  },
+  {
+    "file": "prefs/missing-view.data.js",
+    "as": "prefs.data.js",
+    "reason": "項目 taskView がありません",
+    "what": "好みの項目が足りない"
+  },
+  {
+    "file": "prefs/wrong-callback.data.js",
+    "as": "prefs.data.js",
+    "reason": "window.nuuDashboardPrefs(",
+    "what": "好みの包みが作業のデータ用"
+  },
+  {
+    "file": "index/no-items.data.js",
+    "as": "index.data.js",
+    "reason": "項目 items がありません",
+    "what": "一覧に items がない"
+  },
+  {
+    "file": "index/bad-href.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].href: \"sample-shop/x.html\" にしてください",
+    "what": "一覧の href がパスと違う"
+  },
+  {
+    "file": "index/removed.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].status: \"removed\" は使えません",
+    "what": "一覧に外した作業の行がある"
+  },
+  {
+    "file": "index/review-title.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].reviews[0]: 知らない項目 \"title\"",
+    "what": "一覧の PR / MR に表示しない項目がある"
+  },
+  {
+    "file": "index/review-http-url.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].reviews[0].url: \"http://github.com/example/app/pull/7\" は使えません",
+    "what": "一覧の PR / MR の URL が http"
+  }
+]

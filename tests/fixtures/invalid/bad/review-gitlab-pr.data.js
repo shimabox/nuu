@@ -1,0 +1,28 @@
+window.nuuDashboardData(
+{
+  "schema": 1,
+  "project": "bad",
+  "slug": "review-gitlab-pr",
+  "title": "壊れた例",
+  "summary": "",
+  "status": "active",
+  "startedAt": 1790603523,
+  "updatedAt": 1790607123,
+  "tasks": [],
+  "questions": [],
+  "blockers": [],
+  "artifacts": [],
+  "panels": [],
+  "reviews": [
+    {
+      "provider": "gitlab",
+      "kind": "pr",
+      "number": 7,
+      "title": "t",
+      "url": "https://gitlab.com/example/app/-/merge_requests/7",
+      "state": "open",
+      "at": 1790604000
+    }
+  ]
+}
+);

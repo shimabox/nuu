@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""dashboard-builder か dashboard-updater が作業ごとのダッシュボードかそのデータファイルを書いた直後に、その作業のトークン量を集計する。
+"""dashboard-builder か dashboard-updater が作業のデータファイルを書いた直後に、その作業のトークン量を集計する。
 
 会話の記録（Claude 本体とサブエージェント）から、ダッシュボードを用意し始めた時刻以降の
-トークン量を合計し、ダッシュボードと同じフォルダーの <作業>.usage.js に書く。
-作業したセッションに戻れるよう、セッションの ID と作業ディレクトリも一緒に書く。ダッシュボードの HTML と
+トークン量を合計し、データファイルと同じフォルダーの <作業>.usage.js に書く。
+作業したセッションに戻れるよう、セッションの ID と作業ディレクトリも一緒に書く。
 データファイルはエージェントが編集中のため、このスクリプトは書き換えない。
 集計に失敗してもエージェントの作業は止めない。
 """
@@ -106,10 +106,10 @@ def main():
         return
     target = os.path.realpath(os.path.expanduser((payload.get("tool_input") or {}).get("file_path") or ""))
     relative = os.path.relpath(target, DASHBOARDS)
-    # 作業ごとのダッシュボード（<プロジェクト>/<作業>.html）とそのデータファイル（<作業>.data.js）
-    # だけを対象にし、一覧やメモリは数えない。
-    suffix = next((end for end in (".html", ".data.js") if relative.endswith(end)), None)
-    if relative.startswith("..") or relative.count(os.sep) != 1 or suffix is None:
+    # 作業のデータファイル（<プロジェクト>/<作業>.data.js）だけを対象にし、一覧や好みは数えない。
+    # スタブ（.html）はフックが置くので、エージェントの書き込みとしては起きない。
+    suffix = ".data.js"
+    if relative.startswith("..") or relative.count(os.sep) != 1 or not relative.endswith(suffix):
         return
     target = target[: -len(suffix)]
     relative = relative[: -len(suffix)]

@@ -1,0 +1,13 @@
+{
+  "name": "nuu",
+  "private": true,
+  "description": "固定クライアント（client/）をブラウザで確かめるための開発用の依存。利用者に Node は要らない。",
+  "license": "MIT",
+  "scripts": {
+    "test:client": "playwright test --project=chromium",
+    "test:client:all": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
