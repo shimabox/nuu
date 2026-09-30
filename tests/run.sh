@@ -114,7 +114,7 @@ body_has() {
 }
 
 check '名前は dashboard-builder' has_line 'name: dashboard-builder'
-check 'モデルは sonnet' has_line 'model: sonnet'
+check 'モデルは opus' has_line 'model: opus'
 check 'effort は low' has_line 'effort: low'
 check '使えるツールは Read, Write, Edit, Bash だけ' has_line 'tools: Read, Write, Edit, Bash'
 check 'メモリを使わない（好みは prefs.data.js に置く）' fails grep -q '^memory:' <<<"$frontmatter"
@@ -164,6 +164,7 @@ check 'state の語彙を示す' body_has '`state` は `todo | doing | waiting |
 check '収まらない内容は table か text で表す' body_has '7 種に収まらない内容は `table` か `text` で表す'
 check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
 check '手順のカンバンと同じことを別のパネルに書かない' body_has '手順のカンバンと同じことを別のパネルに書かない'
+check 'flow は手順の並びをなぞらない' body_has '`flow` は手順の並びをなぞらない'
 check '渡されていない進捗や数値は作らない' body_has '呼び出し元から渡されていない進捗や数値は作らない'
 check '確かめるために読み直さない' body_has '確かめるために読み直さない'
 check 'setup でスタブができたかを 1 回確かめる' body_has '同じ名前の `.html` を 1 回 Read して、フックがページを置いたかを確かめる'
@@ -283,6 +284,12 @@ check '聞けないときは好みを決めず、聞けないことを渡す' ru
 check '聞けないときは何も保存せず既定の見た目にする' rules_have '何も保存せず、ダッシュボードは既定の見た目で表示される'
 check '「今回だけ」の好みはない' fails rules_have '今回だけ'
 check '好みの変更はすべてのダッシュボードにすぐ届く' rules_have '変更は開いているページも含めたすべてのダッシュボードにすぐ届く'
+check 'モデルは settings.json で指定できる' rules_have '`~/.claude/nuu/settings.json` で指定できる'
+check 'モデルの値は決まった語に限る' rules_have '値は `sonnet | opus | haiku | fable`'
+check '指定がなければ定義の既定を使う' rules_have 'エージェントの定義の既定（builder は opus、updater は sonnet）を使う'
+check '指定があれば呼ぶたびに model に渡す' rules_have '指定があれば、そのエージェントを呼ぶたびに Agent ツールの `model` に渡す'
+check '指定がなければ model を渡さない' rules_have '指定がなければ `model` を渡さない'
+check 'モデルの変更は該当する値だけを書き換える' rules_have '`settings.json` の該当する名前の値だけを書き換える'
 check '用意するときに作業ディレクトリを渡す' rules_have '用意するときは、作業ディレクトリ、'
 check 'ダッシュボードのパスを覚えて更新のたびに渡す' rules_have '作業ごとのダッシュボードのパスは覚えておき、以後の更新と完了のたびに'
 check '途中の更新と完了は updater に任せる' rules_have '途中の更新と完了は、軽量な `dashboard-updater` に任せる'
@@ -859,15 +866,19 @@ run_install
 mkdir -p "$DASH_DIR/project"
 printf 'board\n' >"$DASH_DIR/project/task.data.js"
 printf 'prefs\n' >"$DASH_DIR/prefs.data.js"
+printf '{}\n' >"$TEST_HOME/.claude/nuu/settings.json"
 check 'ダッシュボードがあってもアンインストールが成功する' run_uninstall
 check 'ダッシュボードは残す' test -f "$DASH_DIR/project/task.data.js"
 check '好みのスタイルは残す' test -f "$DASH_DIR/prefs.data.js"
+check 'モデルの指定は残す' test -f "$TEST_HOME/.claude/nuu/settings.json"
 check 'ダッシュボードがあっても固定クライアントのリンクは外す' test ! -L "$CLIENT_LINK"
 
 run_install
+printf '{}\n' >"$TEST_HOME/.claude/nuu/settings.json"
 check '--purge が成功する' run_uninstall --purge
 check '--purge でダッシュボードを消す' test ! -e "$DASH_DIR"
 check '--purge で好みのスタイルも消す' test ! -e "$DASH_DIR/prefs.data.js"
+check '--purge でモデルの指定も消す' test ! -e "$TEST_HOME/.claude/nuu/settings.json"
 check '--purge で空になった ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check '--purge でリンクを外す' test ! -e "$AGENT_LINK"
 check '--purge でもリポジトリの client/ は残す' test -f "$REPO/client/nuu.js"

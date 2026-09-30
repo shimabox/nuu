@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install.sh で作ったリンクと、~/.claude/CLAUDE.md の読み込みの 1 行を外し、nuu のサブエージェントを使えなくする。
-# --purge を付けると、~/.claude/nuu/dashboards/ のダッシュボードと好みのスタイルも消す。リポジトリ自体は消さない。
+# --purge を付けると、~/.claude/nuu/dashboards/ のダッシュボードと好みのスタイル、~/.claude/nuu/settings.json のモデルの指定も消す。リポジトリ自体は消さない。
 
 set -euo pipefail
 
@@ -10,6 +10,7 @@ readonly CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 readonly IMPORT_LINE='@~/.claude/nuu/claude-instructions.md'
 readonly RULE_HEADING='## 長い作業の進捗ダッシュボード'
 readonly DASHBOARDS="$HOME/.claude/nuu/dashboards"
+readonly SETTINGS="$HOME/.claude/nuu/settings.json"
 
 purge=false
 case "${1:-}" in
@@ -63,6 +64,10 @@ if [[ "$purge" == true ]]; then
   else
     printf 'OK     %s（ありません）\n' "$DASHBOARDS"
   fi
+  if [[ -f "$SETTINGS" ]]; then
+    rm -f "$SETTINGS"
+    printf 'REMOVE %s\n' "$SETTINGS"
+  fi
 fi
 # 空になったフォルダーだけを消す。ダッシュボードが残っていれば消さない。
 rmdir "$DASHBOARDS" 2>/dev/null || true
@@ -73,4 +78,7 @@ if [[ -f "$CLAUDE_MD" ]] && grep -qxF "$RULE_HEADING" "$CLAUDE_MD"; then
 fi
 if [[ -d "$DASHBOARDS" ]]; then
   printf '\n%s のダッシュボードと好みのスタイルは残しています（--purge を付けると消します）。\n' "$DASHBOARDS"
+fi
+if [[ -f "$SETTINGS" ]]; then
+  printf '\n%s のモデルの指定は残しています（--purge を付けると消します）。\n' "$SETTINGS"
 fi

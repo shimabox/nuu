@@ -61,6 +61,7 @@ https://shimabox.github.io/nuu/
 - 作業で使ったトークン量の目安を表示する
 - 作業したセッションの ID と、`claude --resume` で再開するコマンドを表示する。一覧で止まっている作業を見つけたら、コマンドをコピーしてその会話に戻れる
 - 作業中に判断が必要になっても止まらず、質問と既定の対応をダッシュボードに載せて作業を続ける
+- ダッシュボードを作るエージェントのモデルを、頼めば変えられる。既定はパネルを組み立てる builder が `opus`、途中の更新をする updater が `sonnet`
 
 ダッシュボードとエージェントへの指示は日本語です。
 
@@ -148,10 +149,12 @@ open ~/.claude/nuu/dashboards/index.html
 
 | エージェント | モデル | 受け持つこと |
 |---|---|---|
-| `dashboard-builder` | `sonnet`（effort low） | ダッシュボードの用意（作業に合わせたパネルの選択）、好みのスタイルの変更、構成の見直し |
+| `dashboard-builder` | `opus`（effort low） | ダッシュボードの用意（作業に合わせたパネルの選択）、好みのスタイルの変更、構成の見直し |
 | `dashboard-updater` | `sonnet`（effort low） | 途中の更新と完了、中断と再開、一覧から作業を外すこと。パネルの構成は変えず、作業のデータファイル（`.data.js`）の JSON だけを書き換える |
 
-エージェントの定義では、どちらもモデルを `sonnet` の別名で指定し、effort を `low` にしています。Claude Code がその時点のモデルに割り当てます。
+エージェントの定義では、builder を `opus`、updater を `sonnet` の別名で指定し、どちらも effort を `low` にしています。Claude Code がその時点のモデルに割り当てます。モデルは「モデルを変える」の手順で変えられます。
+
+builder を `opus` にしているのは、パネルを作業の中身から組み立てる判断を受け持つからです。同じ 3 つの作業で `sonnet` と比べたところ、`opus` は作業が進むと変わる値を推移のグラフにするなど、作業に合わせたパネルを多く選び、手順のカンバンと重なるパネルも少なくなりました。
 
 `dashboard-builder` は HTML を書かず、データの形とパネルの選び方だけを読んで、作業のデータを書きます。途中の更新は回数が多いので、`dashboard-updater` は変わった箇所だけを書き換えて短く済ませます。書き換えたあとに読み直さず、データが決まった形かはフックのスクリプトが確かめます。今のパネルに収まらない変化は `dashboard-builder` に回します。
 
@@ -206,6 +209,19 @@ Claude Code に「ダッシュボードを light、airy、teal に変えて」�
 rm ~/.claude/nuu/dashboards/prefs.data.js
 ```
 
+### モデルを変える
+
+Claude Code に「ダッシュボードの builder を sonnet にして」のように頼みます。指定は `~/.claude/nuu/settings.json` に保存され、次にそのエージェントを呼ぶときから使われます。
+
+```json
+{ "models": { "dashboard-builder": "sonnet", "dashboard-updater": "sonnet" } }
+```
+
+- 名前は `dashboard-builder` と `dashboard-updater`、値は `sonnet`、`opus`、`haiku`、`fable` のどれかです
+- 名前がないエージェントは、定義の既定（builder は `opus`、updater は `sonnet`）を使います。「builder のモデルを既定に戻して」と頼むと、その名前を消します
+- effort は定義の `low` のままです
+- ファイルを手で書き換えることもできます。手で書き換えた指定は、次のセッションから使われます。Claude Code はモデルの指定をセッションの初めに 1 回だけ読むためです。作業中のセッションに反映したいときは、Claude Code に頼みます
+
 ## 構成
 
 - `agents/dashboard-builder.md`: ダッシュボードを用意するサブエージェントの定義
@@ -228,10 +244,10 @@ rm ~/.claude/nuu/dashboards/prefs.data.js
 
 | 場面 | 担当 | 1 回あたりの目安 |
 |---|---|---|
-| ダッシュボードの用意 | `dashboard-builder`（`sonnet`） | 約 $0.07、30 秒前後 |
+| ダッシュボードの用意 | `dashboard-builder`（`opus`） | 約 $0.2〜0.3、25 秒前後 |
 | 途中の更新と完了 | `dashboard-updater`（`sonnet`） | 約 $0.02〜0.03、10〜20 秒前後 |
 
-用意の目安は、Claude Code 2.1.283 で 3 回測った中央値です。会話の記録の都合で料金が少なめに出ることがあり、多めに見ても 1 回約 $0.13 です。`dashboard-builder` は HTML を書かず、データだけを書くので、用意を短く済ませられます。
+用意の目安は、Claude Code 2.1.285 で性質の違う 3 つの作業を 1 回ずつ用意したときの値です。幅は、キャッシュの保持時間（5 分か 1 時間）でキャッシュへの書き込みの単価が変わるためです。同じ測り方で、`sonnet` の builder は約 $0.1〜0.17、20 秒前後でした。料金を抑えたいときは、builder を `sonnet` に変えられます（「モデルを変える」を参照）。`dashboard-builder` は HTML を書かず、データだけを書くので、用意を短く済ませられます。
 
 途中の更新と完了の目安は、10 通りの作業の流れで 1 回ずつ測った実測です。料金は会話の記録のトークンから推計したもので、記録の都合で少なめに出ることがあります。途中の更新はバックグラウンドで行うので、作業はその時間を待ちません。
 
@@ -253,7 +269,7 @@ rm ~/.claude/nuu/dashboards/prefs.data.js
 
 ```sh
 ./uninstall.sh          # リンクだけ外す。ダッシュボードと好みのスタイルは残す
-./uninstall.sh --purge  # ダッシュボードと好みのスタイルも消す
+./uninstall.sh --purge  # ダッシュボード、好みのスタイル、モデルの指定も消す
 ```
 
 このリポジトリへのリンクだけを外します。別のファイルに置き換わっていれば残します。`./install.sh` を実行すれば元に戻せます。

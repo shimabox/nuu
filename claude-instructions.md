@@ -8,6 +8,9 @@
 - `dashboard-builder` が作業ごとのダッシュボードのパスを返したら、好みは聞き直さない。好みを利用者に聞くのは、`dashboard-builder` が `NEEDS_STYLE` を返したときだけ
 - 好みを利用者に聞けないときは、好みを自分で決めて渡さない。「好みを聞けない」と `dashboard-builder` に渡す。`dashboard-builder` は何も保存せず、ダッシュボードは既定の見た目で表示される
 - 利用者がダッシュボードの好み（テーマ、密度、アクセントカラー、タスクの表示）の変更を求めたら、新しい好みを「利用者の答え」として `dashboard-builder` に渡す。好みはすべてのダッシュボードで共通なので、変更は開いているページも含めたすべてのダッシュボードにすぐ届く
+- `dashboard-builder` と `dashboard-updater` のモデルは、`~/.claude/nuu/settings.json` で指定できる。形は `{ "models": { "dashboard-builder": "sonnet", "dashboard-updater": "opus" } }` で、値は `sonnet | opus | haiku | fable`。ファイルがないときや名前がないときは、エージェントの定義の既定（builder は opus、updater は sonnet）を使う
+- セッションで初めて `dashboard-builder` か `dashboard-updater` を呼ぶ前に、`settings.json` を 1 回読む。指定があれば、そのエージェントを呼ぶたびに Agent ツールの `model` に渡す。指定がなければ `model` を渡さない。値が決まった語でなければ渡さず、利用者に知らせる
+- 利用者がダッシュボードのエージェントのモデルの変更を求めたら、`settings.json` の該当する名前の値だけを書き換える。ファイルがなければ作る。既定に戻すよう求められたら、その名前を消す。変えたあとの呼び出しから新しいモデルを渡す。effort は定義の `low` のままで、ここでは変えられない
 - ダッシュボードを用意したら、作業ごとのダッシュボードと全体の一覧のパスを利用者に伝える
 - 作業ごとのダッシュボードのパスは覚えておき、以後の更新と完了のたびに渡す
 - 途中の更新と完了は、軽量な `dashboard-updater` に任せる。1 ステップ終えるごとに `dashboard-updater` を呼び、タスクの状態、新しい成果物、止まっているものを更新する
