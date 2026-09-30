@@ -418,11 +418,11 @@ readonly SESSION="$PROJECTS/session"
 readonly MAIN_LOG="$PROJECTS/session.jsonl"
 mkdir -p "$SESSION/subagents"
 
-# 応答 1 行を作る。同じ id の行は、書き出し途中の値と確定した値を表す。
+# 応答 1 行を作る。同じ id の行は、書き出し途中の値と確定した値を表す。7 番目の引数はモデル（既定は claude-test）。
 log_line() {
   jq -cn --arg ts "$1" --arg id "$2" --argjson input "$3" --argjson output "$4" \
-    --argjson read "$5" --argjson write "$6" \
-    '{type: "assistant", timestamp: $ts, message: {id: $id, model: "claude-test",
+    --argjson read "$5" --argjson write "$6" --arg model "${7:-claude-test}" \
+    '{type: "assistant", timestamp: $ts, message: {id: $id, model: $model,
       usage: {input_tokens: $input, output_tokens: $output,
         cache_read_input_tokens: $read, cache_creation_input_tokens: $write}}}'
 }
@@ -440,9 +440,10 @@ printf '{"agentType":"dashboard-builder"}\n' >"$SESSION/subagents/agent-setup.me
 log_line 2026-09-27T02:00:05.000Z other-1 3 30 0 0 >"$SESSION/subagents/agent-other.jsonl"
 printf '{"agentType":"Explore"}\n' >"$SESSION/subagents/agent-other.meta.json"
 
+# 3 番目の引数は書いたエージェントの ID（既定は setup）。
 run_usage() {
-  jq -n --arg tool "$1" --arg path "$2" --arg log "$MAIN_LOG" \
-    '{tool_name: $tool, transcript_path: $log, agent_id: "setup", session_id: "session", cwd: "/work/it'"'"'s here", tool_input: {file_path: $path}}' \
+  jq -n --arg tool "$1" --arg path "$2" --arg log "$MAIN_LOG" --arg agent "${3:-setup}" \
+    '{tool_name: $tool, transcript_path: $log, agent_id: $agent, session_id: "session", cwd: "/work/it'"'"'s here", tool_input: {file_path: $path}}' \
     | HOME="$TEST_HOME" "$USAGE_LINK"
 }
 
@@ -475,12 +476,15 @@ expect_usage '種類ごとに合計する' '[.totals.input, .totals.output, .tot
 expect_usage 'モデルごとに合計する' '.byModel["claude-test"]' 1702
 expect_usage 'セッションの ID を書く' '.sessionId' session
 expect_usage '作業ディレクトリを書く' '.cwd' "/work/it's here"
+expect_usage '書いた builder のモデルを記録する' '.agentModels["dashboard-builder"] | join(",")' claude-test
+expect_usage 'まだ書いていない updater のモデルは記録しない' '.agentModels | has("dashboard-updater")' false
 
 log_line 2026-09-27T02:00:20.000Z main-2 5 5 0 0 >>"$MAIN_LOG"
 rm "$SESSION/subagents/agent-setup.jsonl"
 check '2 回目の集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
 expect_usage '2 回目も用意を始めた時刻を保つ' '.since | todate' 2026-09-27T02:00:00Z
 expect_usage '2 回目は増えた分を足す' '.byCategory.main.total' 1170
+expect_usage '書いたエージェントの記録がなくても、前回までのモデルを残す' '.agentModels["dashboard-builder"] | join(",")' claude-test
 
 check '一覧のデータを書いても成功する' run_usage Write "$DASH_DIR/index.data.js"
 check '一覧のトークン量は作らない' test ! -e "$DASH_DIR/index.usage.js"
@@ -490,14 +494,25 @@ check '壊れた入力でも作業を止めない' bash -c '"$1" <<<"not json" 2
 
 log_line 2026-09-27T02:00:30.000Z update-1 4 6 0 0 >"$SESSION/subagents/agent-updater.jsonl"
 printf '{"agentType":"dashboard-updater"}\n' >"$SESSION/subagents/agent-updater.meta.json"
-check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
+check 'updater の書き込みでも集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js" updater
 expect_usage 'updater の分もダッシュボードに数える' '.byCategory.dashboard.total' 10
 
 log_line 2026-09-27T02:00:40.000Z update-2 1 1 0 0 >>"$SESSION/subagents/agent-updater.jsonl"
 check 'スタブ（.html）の書き込みでも失敗しない' run_usage Write "$DASH_DIR/project/task.html"
 expect_usage 'スタブ（.html）の書き込みでは集計しない' '.byCategory.dashboard.total' 10
-check 'もう一度データを書いたら集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js"
+check 'もう一度データを書いたら集計が成功する' run_usage Edit "$DASH_DIR/project/task.data.js" updater
 expect_usage 'データを書けば増えた分を数える' '.byCategory.dashboard.total' 12
+expect_usage '書いた updater のモデルを記録する' '.agentModels["dashboard-updater"] | join(",")' claude-test
+expect_usage 'updater が書いても builder のモデルを残す' '.agentModels["dashboard-builder"] | join(",")' claude-test
+
+log_line 2026-09-27T02:00:50.000Z update-3 0 0 0 0 claude-other >>"$SESSION/subagents/agent-updater.jsonl"
+run_usage Edit "$DASH_DIR/project/task.data.js" updater
+expect_usage '別のモデルで書けば、最初に書いた順に足す' '.agentModels["dashboard-updater"] | join(",")' claude-test,claude-other
+log_line 2026-09-27T02:00:55.000Z update-4 0 0 0 0 '<synthetic>' >>"$SESSION/subagents/agent-updater.jsonl"
+run_usage Edit "$DASH_DIR/project/task.data.js" updater
+expect_usage '合成された応答はモデルとして数えない' '.agentModels["dashboard-updater"] | join(",")' claude-test,claude-other
+run_usage Edit "$DASH_DIR/project/task.data.js" other
+expect_usage 'ダッシュボードのエージェント以外のモデルは記録しない' '.agentModels | keys | join(",")' dashboard-builder,dashboard-updater
 
 echo '== データの確認 =='
 

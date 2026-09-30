@@ -809,6 +809,32 @@
     return group === 'byCategory' ? (isObject(holder) ? num(holder.total) : null) : num(holder);
   }
 
+  var AGENT_MODELS = [['作成（builder）', 'dashboard-builder', 'builder'], ['更新（updater）', 'dashboard-updater', 'updater']];
+
+  // claude-opus-5-5 は Opus 5.5、claude-haiku-4-5-20251001 は Haiku 4.5 と短く出す。形が違えばそのまま出す。
+  function modelName(id) {
+    var match = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/.exec(id);
+    if (!match) return id;
+    return match[1].charAt(0).toUpperCase() + match[1].slice(1) + ' ' + match[2] + (match[3] ? '.' + match[3] : '');
+  }
+
+  // 作業のデータを書いたモデルを、エージェントごとに書いた順で並べる。記録がなければ「記録なし」。
+  function agentModelsGroup(input) {
+    var records = isObject(input.agentModels) ? input.agentModels : {};
+    return h('div', { class: 'nuu-usage-group', 'data-role': 'agent-models' }, [
+      h('h3', { class: 'nuu-h3', text: 'ダッシュボードのモデル' }),
+      h('dl', { class: 'nuu-usage-list' }, AGENT_MODELS.map(function (item) {
+        var ids = (Array.isArray(records[item[1]]) ? records[item[1]] : []).filter(function (id) { return typeof id === 'string' && id; });
+        return h('div', { class: 'nuu-usage-item' }, [
+          h('dt', { text: item[0] }),
+          ids.length
+            ? h('dd', { 'data-role': 'model-' + item[2], title: ids.join('、') }, [h('strong', { text: ids.map(modelName).join('、') })])
+            : h('dd', { 'data-role': 'model-' + item[2] }, [h('span', { class: 'nuu-muted', text: '記録なし' })])
+        ]);
+      }))
+    ]);
+  }
+
   function usageTotal(label, value, role) {
     return h('div', { class: 'nuu-usage-total' }, [
       h('span', { class: 'nuu-field-label', text: label }),
@@ -839,7 +865,7 @@
               ]);
             }))
           ]);
-        })),
+        }).concat([agentModelsGroup(input)])),
         h('p', { class: 'nuu-usage-meta' }, ['集計した時刻 ', timeNode(input.updatedAt, 'both')]),
         h('p', { class: 'nuu-note', text: '目安です。サブエージェントの出力トークンは少なめに出ることがあります' })
       ])
@@ -1289,7 +1315,7 @@
     renderIndex: renderIndex,
     applyPrefs: applyPrefs,
     resumeCommand: resumeCommand,
-    format: { short: short, exact: exact, time: timeText, ago: agoText, clock: clockText }
+    format: { short: short, exact: exact, time: timeText, ago: agoText, clock: clockText, model: modelName }
   };
 
   // スタブでは nuu.js のあとに好みのファイルを読む。最初の描画に好みが当たるよう、読み終えてから始める。
