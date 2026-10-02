@@ -325,7 +325,7 @@ check '項目の provider、種類、番号、題名、URL、状態を updater �
 check '種類ごとの状態の語彙をルールに示す' \
   rules_have '状態は、PR / MR が draft / open / merged / closed、Issue が open / closed、リリースが draft / published、リポジトリが public / private / archived'
 check 'リポジトリは作業で新しく作ったときだけ載せる' \
-  rules_have 'リポジトリは、その作業で新しく作ったときだけ載せる。作業の対象の既存のリポジトリは載せない'
+  rules_have 'リポジトリは、その作業で新しく作ったときだけ載せる。作業対象となる既存のリポジトリは載せない'
 check '既存のものを見つけたときに載せるのは PR / MR、Issue、リリースだけ' rules_have '作業に関係する既存の PR / MR、Issue、リリースを見つけたときは'
 check 'setup のときに分かっている項目は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
 check 'updater に渡す手順の状態は決まった語彙で書く' \

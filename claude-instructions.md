@@ -18,7 +18,7 @@
 - `dashboard-updater` が「構成の見直しが必要です」と返したら、同じパスと変化を `dashboard-builder` に渡して構成を直させる
 - 途中の更新はバックグラウンドで呼び、完了を待たずに次の手順へ進む。用意（setup）は返ってくるパスが必要なので、完了を待つ
 - 前の更新がまだ終わっていなければ新しく呼ばず、終わってから、その間の変化をまとめて渡す。同じダッシュボードを同時に更新させない
-- 作業で GitHub / GitLab の項目（GitHub の Pull Request（PR）、GitLab の Merge Request（MR）、Issue、リリース、リポジトリ）を作ったとき、その状態が変わったとき（PR / MR の下書きから公開・マージ・閉じた、Issue のクローズ、リリースの公開、リポジトリの公開範囲の変更やアーカイブ）、作業に関係する既存の PR / MR、Issue、リリースを見つけたときは、provider（github / gitlab）、種類（pr / mr / issue / release / repo）、番号（PR / MR / Issue だけ）、題名（リリースはタグ、リポジトリは owner/name）、URL、状態を `dashboard-updater` に渡して載せる。状態は、PR / MR が draft / open / merged / closed、Issue が open / closed、リリースが draft / published、リポジトリが public / private / archived。リポジトリは、その作業で新しく作ったときだけ載せる。作業の対象の既存のリポジトリは載せない。setup のときに分かっていれば `dashboard-builder` に渡す。ダッシュボードは項目の状態を自分では取りにいかないので、変わったら渡す
+- 作業で GitHub / GitLab の項目（GitHub の Pull Request（PR）、GitLab の Merge Request（MR）、Issue、リリース、リポジトリ）を作ったとき、その状態が変わったとき（PR / MR の下書きから公開・マージ・閉じた、Issue のクローズ、リリースの公開、リポジトリの公開範囲の変更やアーカイブ）、作業に関係する既存の PR / MR、Issue、リリースを見つけたときは、provider（github / gitlab）、種類（pr / mr / issue / release / repo）、番号（PR / MR / Issue だけ）、題名（リリースはタグ、リポジトリは owner/name）、URL、状態を `dashboard-updater` に渡して載せる。状態は、PR / MR が draft / open / merged / closed、Issue が open / closed、リリースが draft / published、リポジトリが public / private / archived。リポジトリは、その作業で新しく作ったときだけ載せる。作業対象となる既存のリポジトリは載せない。setup のときに分かっていれば `dashboard-builder` に渡す。ダッシュボードは項目の状態を自分では取りにいかないので、変わったら渡す
 - 利用者の判断が必要になったら、止まって待たずに、質問と既定の対応を `dashboard-updater` 経由で質問一覧に追加し、既定の対応で作業を続ける
 - 取り消せない操作や外部に公開される操作（削除、push、送信など）は既定の対応で進めず、既存のルールどおり承認を待つ。その間も進められる別のステップがあれば続ける
 - 作業が終わったら、`dashboard-updater` で完了状態に更新し、終わるのを待ってから利用者に報告する
