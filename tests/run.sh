@@ -324,6 +324,9 @@ check '項目の provider、種類、番号、題名、URL、状態を updater �
   rules_have 'provider（github / gitlab）、種類（pr / mr / issue / release / repo）、番号（PR / MR / Issue だけ）、題名（リリースはタグ、リポジトリは owner/name）、URL、状態を `dashboard-updater` に渡して載せる'
 check '種類ごとの状態の語彙をルールに示す' \
   rules_have '状態は、PR / MR が draft / open / merged / closed、Issue が open / closed、リリースが draft / published、リポジトリが public / private / archived'
+check 'リポジトリは作業で新しく作ったときだけ載せる' \
+  rules_have 'リポジトリは、その作業で新しく作ったときだけ載せる。作業の対象の既存のリポジトリは載せない'
+check '既存のものを見つけたときに載せるのは PR / MR、Issue、リリースだけ' rules_have '作業に関係する既存の PR / MR、Issue、リリースを見つけたときは'
 check 'setup のときに分かっている項目は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
 check 'updater に渡す手順の状態は決まった語彙で書く' \
   rules_have '`dashboard-updater` に渡す手順の状態は、todo / doing / waiting / blocked / done の言葉で書く（例: 進行中は doing）'

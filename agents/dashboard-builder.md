@@ -130,7 +130,7 @@ window.nuuDashboardData(
 
 ## GitHub / GitLab の項目（`reviews`）
 
-作業に関係する GitHub / GitLab の項目を載せる。種類は、変更のまとまり（GitHub の Pull Request、GitLab の Merge Request）、Issue、リリース、リポジトリ。呼び出し元から渡されたときだけ書き、渡されていなければ `reviews` を書かない。ページは項目の状態を取りにいかないので、渡された値だけを載せる。
+作業に関係する GitHub / GitLab の項目を載せる。種類は、変更のまとまり（GitHub の Pull Request、GitLab の Merge Request）、Issue、リリース、その作業で新しく作ったリポジトリ。呼び出し元から渡されたときだけ書き、渡されていなければ `reviews` を書かない。ページは項目の状態を取りにいかないので、渡された値だけを載せる。
 
 - `provider` は `github | gitlab`
 - `kind` は `pr`（Pull Request）、`mr`（Merge Request）、`issue`、`release`、`repo`。`pr` は `github`、`mr` は `gitlab` に限る

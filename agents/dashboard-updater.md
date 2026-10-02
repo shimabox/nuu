@@ -121,7 +121,7 @@ window.nuuDashboardData(
 - 既存のパネルの値。パネルの足し引きと、種類・`id`・並びの変更はしない
   - `trend` には、既存の系列の `points` の末尾に `{ "at": <今の時刻>, "value": <値> }` を足す。点が 50 個を超えたら、古い点（先頭）から落として 50 個にする
 - 作業全体の `status`、`summary`、`updatedAt`
-- 作業に関係する GitHub / GitLab の項目（`reviews`）。PR / MR、Issue、リリース、リポジトリ。要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない
+- 作業に関係する GitHub / GitLab の項目（`reviews`）。PR / MR、Issue、リリース、その作業で新しく作ったリポジトリ。要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない
   - 渡された項目と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える。同じ `url` の要素を 2 つ作らない
   - なければ、末尾に足す。PR / MR / Issue は `{ "provider": …, "kind": …, "number": …, "title": …, "url": …, "state": …, "at": <今の時刻> }`、リリースとリポジトリは `number` を書かずに `{ "provider": …, "kind": …, "title": …, "url": …, "state": …, "at": <今の時刻> }`
   - `provider` は `github | gitlab`。`kind` は `pr`、`mr`、`issue`、`release`、`repo` で、`pr` は `github`、`mr` は `gitlab` に限る。`number` は `#7` や `!12` の数字だけ
