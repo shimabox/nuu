@@ -100,11 +100,11 @@ test('行から作業のページへ移れる。形の違う href はリンク�
   await expect(page.locator('[data-page="task"] .nuu-title')).toHaveText('商品検索に価格・在庫・評価の絞り込みを追加する');
 });
 
-test('行に PR / MR の札を出し、押すとその PR / MR を新しいタブで開く。多いときは先頭の 3 件と「ほか n 件」にする', async ({ page }) => {
+test('行に GitHub / GitLab の項目の札を出し、押すとその項目を新しいタブで開く。多いときは先頭の 3 件と「ほか n 件」にする', async ({ page }) => {
   await openIndex(page);
   const chips = (key) => page.locator(`.nuu-row[data-key="${key}"] .nuu-review-chip`);
-  const shop = chips('sample-shop/2026-09-28-2252-search-filters');
-  await expect(shop).toHaveText(['PR #128']);
+  const shop = chips('sample-shop/2026-09-28-2252-search-filters').first();
+  await expect(chips('sample-shop/2026-09-28-2252-search-filters')).toHaveText(['PR #128', 'Issue #121']);
   await expect(shop).toHaveAttribute('href', 'https://github.com/example-shop/storefront/pull/128');
   await expect(shop).toHaveAttribute('target', '_blank');
   await expect(shop).toHaveAttribute('rel', 'noopener');
@@ -117,7 +117,15 @@ test('行に PR / MR の札を出し、押すとその PR / MR を新しいタ�
   await expect(migration.locator('.nuu-review-chip')).toHaveText(['PR #305', 'MR !87', 'PR #301']);
   await expect(migration.locator('.nuu-review-more')).toHaveText('ほか 1 件');
   await expect(migration.locator('.nuu-review-more')).toHaveAttribute('href', 'sample-infra/2026-09-26-0930-db-migration.html#reviews');
-  await expect(page.locator('.nuu-row[data-key="sample-docs/2026-09-27-1010-api-guide"] [data-role="row-reviews"]')).toHaveCount(0);
+  // リリースとリポジトリは番号の代わりに題名で札にする。リポジトリは名前の最後の部分だけを出す。
+  const docs = chips('sample-docs/2026-09-27-1010-api-guide');
+  await expect(docs).toHaveText(['リリース v2.0.0', 'リポジトリ api-guide']);
+  await expect(docs.first()).toHaveAttribute('title', 'GitHub リリース v2.0.0（下書き）');
+  await expect(docs.first()).toHaveAttribute('data-state', 'draft');
+  await expect(docs.last()).toHaveAttribute('title', 'GitHub リポジトリ example-docs/api-guide（公開）');
+  await expect(docs.last()).toHaveAttribute('href', 'https://github.com/example-docs/api-guide');
+  await expect(chips('sample-shop/2026-09-28-2252-search-filters').last()).toHaveAttribute('title', 'GitHub Issue #121（オープン）');
+  await expect(page.locator('.nuu-row[data-key="sample-min/2026-09-28-0900-empty"] [data-role="row-reviews"]')).toHaveCount(0);
 
   // 札は行全体のリンクより手前にあり、押すと行のリンクではなく札のリンクが働く。
   const onTop = await shop.evaluate((node) => {

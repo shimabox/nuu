@@ -35,8 +35,10 @@ PREFS_NAME = "prefs" + DATA_SUFFIX
 LOCK_NAME = ".index.lock"
 # ロックを待つ上限（秒）。エージェント定義のフックの timeout（10 秒）より短くする。
 LOCK_WAIT = 5.0
-# 一覧の行に持たせる PR / MR の項目。題名と時刻は作業のページで見る。
+# 一覧の行に持たせる GitHub / GitLab の項目。PR / MR / Issue は番号で、リリースとリポジトリは題名で札にする。
+# 時刻と、番号で表す項目の題名は作業のページで見る。
 REVIEW_FIELDS = ("provider", "kind", "number", "url", "state")
+TITLED_KINDS = ("release", "repo")
 
 
 def load_validate():
@@ -124,11 +126,18 @@ def task_row(validate, project, slug, path):
         "updatedAt": data["updatedAt"],
         "href": f"{project}/{slug}.html",
     }
-    # PR / MR は、一覧の札に要る項目だけを、最終更新（at）が新しい順に持たせる。
+    # GitHub / GitLab の項目は、一覧の札に要る項目だけを、最終更新（at）が新しい順に持たせる。
     reviews = sorted(data.get("reviews", []), key=lambda review: review["at"], reverse=True)
     if reviews:
-        row["reviews"] = [{key: review[key] for key in REVIEW_FIELDS} for review in reviews]
+        row["reviews"] = [index_review(review) for review in reviews]
     return row
+
+
+def index_review(review):
+    item = {key: review[key] for key in REVIEW_FIELDS if key in review}
+    if review["kind"] in TITLED_KINDS:
+        item["title"] = review["title"]
+    return item
 
 
 def previous_rows(path):

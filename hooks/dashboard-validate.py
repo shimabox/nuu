@@ -42,8 +42,8 @@ MAX_ROWS = 100
 MAX_SERIES = 4  # trend の系列
 MAX_POINTS = 50  # trend の 1 系列あたりの点
 MAX_STEPS = 12  # flow の段階
-MAX_REVIEWS = 20  # 作業に関係する PR / MR
-MAX_URL = 500  # PR / MR の URL
+MAX_REVIEWS = 20  # 作業に関係する GitHub / GitLab の項目（PR / MR、Issue、リリース、リポジトリ）
+MAX_URL = 500  # GitHub / GitLab の項目の URL
 MAX_INDEX_ITEMS = 1000
 MAX_ERRORS = 8  # 1 回に返す理由の数
 
@@ -55,9 +55,21 @@ PANEL_TYPES = ("progress", "grid", "table", "keyvalue", "text", "trend", "flow")
 THEMES = ("dark", "light")
 DENSITIES = ("dense", "airy")
 TASK_VIEWS = ("kanban", "list")
-# PR / MR。provider ごとに kind は 1 つに決まる（GitHub は Pull Request、GitLab は Merge Request）。
-REVIEW_KINDS = {"github": "pr", "gitlab": "mr"}
-REVIEW_STATES = ("draft", "open", "merged", "closed")
+# 作業に関係する GitHub / GitLab の項目。変更のまとまりは provider で名前が決まる（GitHub は Pull Request の pr、
+# GitLab は Merge Request の mr）。Issue、リリース、リポジトリはどちらも同じ名前を使う。
+CHANGE_KINDS = {"github": "pr", "gitlab": "mr"}
+REVIEW_KINDS = {provider: (change, "issue", "release", "repo") for provider, change in CHANGE_KINDS.items()}
+REVIEW_STATES = {
+    "pr": ("draft", "open", "merged", "closed"),
+    "mr": ("draft", "open", "merged", "closed"),
+    "issue": ("open", "closed"),
+    "release": ("draft", "published"),
+    "repo": ("public", "private", "archived"),
+}
+# 番号で表す種類。リリースとリポジトリは番号を持たず、題名（タグやリポジトリ名）で表す。
+NUMBERED_KINDS = ("pr", "mr", "issue")
+# リポジトリの題名は owner/name。GitLab の入れ子のグループ（group/sub/name）も受け付ける。一覧の札は最後の部分を出す。
+REPO_NAME = re.compile(r"\A[^\s/]+(?:/[^\s/]+)+\Z")
 # ページがリンクにするのは https:// だけなので、ほかの形の URL はここで止める。
 REVIEW_URL = re.compile(r"\Ahttps://[^\s/?#]+(?:[/?#]\S*)?\Z")
 PANEL_ID = re.compile(r"\A[a-z0-9][a-z0-9-]{0,39}\Z")
@@ -288,26 +300,47 @@ def check_task_data(c, data, project, slug):
         check_reviews(c, "reviews", data["reviews"], ("title", "at"))
 
 
+def known_kind(kind):
+    return isinstance(kind, str) and kind in REVIEW_STATES
+
+
+def review_fields(kind, extra):
+    """項目ごとの必須の項目。PR / MR / Issue は番号を持ち、リリースとリポジトリは題名で表すので一覧の行でも題名を持つ。"""
+    fields = ("provider", "kind", "url", "state")
+    if known_kind(kind) and kind in NUMBERED_KINDS:
+        fields += ("number",)
+    elif known_kind(kind) and "title" not in extra:
+        fields += ("title",)
+    return fields + extra
+
+
 def check_reviews(c, where, reviews, extra):
-    """作業に関係する PR / MR。一覧の行では、表示に要る項目だけを持つので extra を空にする。"""
-    if not c.array(where, reviews, MAX_REVIEWS, "。マージ済みか閉じたもののうち、at の古いものから外してください"):
+    """作業に関係する GitHub / GitLab の項目。一覧の行では、表示に要る項目だけを持つので extra を空にする。"""
+    if not c.array(where, reviews, MAX_REVIEWS, "。マージ済み、閉じた、アーカイブのもののうち、at の古いものから外してください"):
         return
     for i, review in enumerate(reviews):
         item_where = f"{where}[{i}]"
-        if not c.record(item_where, review, ("provider", "kind", "number", "url", "state") + extra):
+        kind = review.get("kind") if isinstance(review, dict) else None
+        # 種類が分からないときは番号の有無を問わず、種類の誤りだけを知らせる。
+        optional = () if known_kind(kind) else ("number", "title")
+        if not c.record(item_where, review, review_fields(kind, extra), optional):
             continue
-        if c.enum(at(item_where, "provider"), review["provider"], tuple(REVIEW_KINDS)):
-            kind_of = REVIEW_KINDS[review["provider"]]
-            if review["kind"] != kind_of:
-                c.error(at(item_where, "kind"), f"provider が {review['provider']} なら {kind_of} にしてください"
-                        f"（今は {json.dumps(review['kind'], ensure_ascii=False)}）。GitHub は pr、GitLab は mr です")
+        provider_ok = c.enum(at(item_where, "provider"), review["provider"], tuple(REVIEW_KINDS))
+        if provider_ok and kind in CHANGE_KINDS.values() and kind != CHANGE_KINDS[review["provider"]]:
+            change = CHANGE_KINDS[review["provider"]]
+            c.error(at(item_where, "kind"), f"provider が {review['provider']} なら {change} にしてください"
+                    f"（今は {json.dumps(kind, ensure_ascii=False)}）。GitHub は pr、GitLab は mr です")
+        elif not c.enum(at(item_where, "kind"), kind, REVIEW_KINDS[review["provider"]] if provider_ok else tuple(REVIEW_STATES)):
+            continue
         else:
-            c.enum(at(item_where, "kind"), review["kind"], tuple(REVIEW_KINDS.values()))
-        c.ident(at(item_where, "number"), review["number"])
+            c.enum(at(item_where, "state"), review["state"], REVIEW_STATES[kind])
+        if known_kind(kind) and kind in NUMBERED_KINDS:
+            c.ident(at(item_where, "number"), review["number"])
         c.url(at(item_where, "url"), review["url"])
-        c.enum(at(item_where, "state"), review["state"], REVIEW_STATES)
-        if "title" in extra:
-            c.text(at(item_where, "title"), review["title"], MAX_LABEL)
+        if "title" in review and c.text(at(item_where, "title"), review["title"], MAX_LABEL):
+            if kind == "repo" and not REPO_NAME.match(review["title"]):
+                c.error(at(item_where, "title"), f"{json.dumps(review['title'], ensure_ascii=False)} は使えません。"
+                        "リポジトリは owner/name の形（例: example/app、GitLab なら group/sub/app）で、空白を含めずに書いてください")
         if "at" in extra:
             c.time(at(item_where, "at"), review["at"])
     seen = set()
@@ -316,7 +349,7 @@ def check_reviews(c, where, reviews, extra):
         if not isinstance(url, str):
             continue
         if url in seen:
-            c.error(f"{where}[{i}].url", f"{json.dumps(url, ensure_ascii=False)} が重複しています。同じ PR / MR は 1 つにまとめ、"
+            c.error(f"{where}[{i}].url", f"{json.dumps(url, ensure_ascii=False)} が重複しています。同じ項目は 1 つにまとめ、"
                     "その要素の state、title、at を書き換えてください")
         seen.add(url)
 

@@ -34,7 +34,7 @@ dashboard-builder が用意した作業のデータファイルだけを更新�
 1. 呼び出し元から渡されたダッシュボードのパス（`.html`）から、同じフォルダーのデータファイル `<.html を除いた名前>.data.js` を決める。パスが渡されていなければ、推測で既存のファイルを選ばず、何もせずに「パスが必要です」と返す
 2. データファイルを最初に 1 回 Read する。読み直さない。`.html`、一覧、好みは読まない
 3. `window.nuuDashboardData(` と `);` の間にある JSON だけを Edit で書き換える。変わった部分だけを置き換え、関係のない部分は含めない。1 行目と最終行には触れない
-4. 項目名と値は、下の「データの形」のとおりに書く。今の JSON にまだない種類の要素（質問、止まっているもの、成果物、PR / MR など）を初めて足すときも、推測せずに「データの形」を見て書く。質問が回答済みになったときは、回答の内容 `answer` と回答した時刻 `answeredAt` を足す。PR / MR を初めて載せるときは、`reviews` の配列を作る
+4. 項目名と値は、下の「データの形」のとおりに書く。今の JSON にまだない種類の要素（質問、止まっているもの、成果物、GitHub / GitLab の項目など）を初めて足すときも、推測せずに「データの形」を見て書く。質問が回答済みになったときは、回答の内容 `answer` と回答した時刻 `answeredAt` を足す。GitHub / GitLab の項目を初めて載せるときは、`reviews` の配列を作る
 5. 渡された変化だけを反映する。渡されていない進捗や数値を作らない。呼び出し元の言葉が決まった語彙と違うとき（手順の状態の `in_progress` など）は、決まった語彙（進行中なら `doing`）に直して書く
 6. 時刻は `date +%s` で取った実際の時刻（UNIX 秒）を使う。書き換えるたびに `updatedAt` をその時刻にする。過去の出来事の時刻は、今の JSON にある値を引き継ぐ
 7. 書き換えたあとの JSON は、フックが確かめる。確かめるために読み直さない。壊れていると知らされたときだけ、知らされた箇所を直す
@@ -74,7 +74,8 @@ window.nuuDashboardData(
     { "name": "設計メモ", "ref": "docs/price-sort.md", "at": 1790656200, "note": "並べ替えの条件を整理した" }
   ],
   "reviews": [
-    { "provider": "gitlab", "kind": "mr", "number": 42, "title": "一覧 API に価格の並べ替えを追加する", "url": "https://gitlab.com/example-shop/storefront/-/merge_requests/42", "state": "open", "at": 1790661300 }
+    { "provider": "gitlab", "kind": "mr", "number": 42, "title": "一覧 API に価格の並べ替えを追加する", "url": "https://gitlab.com/example-shop/storefront/-/merge_requests/42", "state": "open", "at": 1790661300 },
+    { "provider": "gitlab", "kind": "release", "title": "v1.4.0", "url": "https://gitlab.com/example-shop/storefront/-/releases/v1.4.0", "state": "draft", "at": 1790661300 }
   ],
   "panels": [
     { "id": "stages", "type": "flow", "title": "公開までの流れ", "wide": true, "steps": [{ "label": "API", "state": "doing" }, { "label": "画面", "state": "waiting", "note": "デザイン待ち" }, { "label": "公開", "state": "todo" }] },
@@ -94,7 +95,7 @@ window.nuuDashboardData(
 - 質問（`questions`）は `id`、`question`、`default`（既定の対応）、`proceeding`（既定の対応で進めているか。`true` か `false` で、省略しない）、`askedAt`。回答が出たら `answer` と `answeredAt` を足す。`answeredAt` だけを書かない
 - 止まっているもの（`blockers`）は `what`（何が）、`why`（理由）、`since`（止まった時刻）、`next`（次にすること）。4 つとも書く。`reason` などほかの項目名は使わない
 - 成果物（`artifacts`）は `name`、`ref`（パスまたは URL）、`at`、任意の `note`。`path` や `url` などほかの項目名は使わない
-- PR / MR（`reviews`）は `provider`、`kind`、`number`、`title`、`url`、`state`、`at`。値の決まりは「変えてよいもの」に書いたとおり
+- GitHub / GitLab の項目（`reviews`）は `provider`、`kind`、`number`（PR / MR / Issue だけ）、`title`、`url`、`state`、`at`。値の決まりは「変えてよいもの」に書いたとおり
 - 時刻（`startedAt`、`updatedAt`、`askedAt`、`answeredAt`、`since`、`at`）は UNIX 秒の整数
 
 パネルの中身:
@@ -120,13 +121,18 @@ window.nuuDashboardData(
 - 既存のパネルの値。パネルの足し引きと、種類・`id`・並びの変更はしない
   - `trend` には、既存の系列の `points` の末尾に `{ "at": <今の時刻>, "value": <値> }` を足す。点が 50 個を超えたら、古い点（先頭）から落として 50 個にする
 - 作業全体の `status`、`summary`、`updatedAt`
-- 作業に関係する PR / MR（`reviews`）。要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない
-  - 渡された PR / MR と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える。同じ `url` の要素を 2 つ作らない
-  - なければ、末尾に `{ "provider": …, "kind": …, "number": …, "title": …, "url": …, "state": …, "at": <今の時刻> }` を足す
-  - `provider` は `github | gitlab`。`kind` は、`github` なら `pr`、`gitlab` なら `mr`。`number` は `#7` や `!12` の数字だけ
-  - `state` は `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）
-  - `url` は `https://` で始まるものだけを書ける。ほかの形の URL しか渡されなければ、その PR / MR は載せずに返答で知らせる
-  - 上限は 20 件、題名 200 字、`url` 500 字。20 件を超えるときは、`merged` か `closed` のうち `at` が古いものから外す
+- 作業に関係する GitHub / GitLab の項目（`reviews`）。PR / MR、Issue、リリース、リポジトリ。要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない
+  - 渡された項目と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える。同じ `url` の要素を 2 つ作らない
+  - なければ、末尾に足す。PR / MR / Issue は `{ "provider": …, "kind": …, "number": …, "title": …, "url": …, "state": …, "at": <今の時刻> }`、リリースとリポジトリは `number` を書かずに `{ "provider": …, "kind": …, "title": …, "url": …, "state": …, "at": <今の時刻> }`
+  - `provider` は `github | gitlab`。`kind` は `pr`、`mr`、`issue`、`release`、`repo` で、`pr` は `github`、`mr` は `gitlab` に限る。`number` は `#7` や `!12` の数字だけ
+  - `title` は題名。リリースはタグかリリース名（例: `v1.2.0`）、リポジトリは `owner/name`（GitLab の入れ子のグループは `group/sub/name`）
+  - `state` は種類ごとに決まっている
+    - `pr`・`mr`: `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）
+    - `issue`: `open`（オープン）、`closed`（クローズ）
+    - `release`: `draft`（下書き）、`published`（公開）
+    - `repo`: `public`（公開）、`private`（非公開）、`archived`（アーカイブ）
+  - `url` は `https://` で始まるものだけを書ける。ほかの形の URL しか渡されなければ、その項目は載せずに返答で知らせる
+  - 上限は 20 件、題名 200 字、`url` 500 字。20 件を超えるときは、`merged`、`closed`、`archived` のもののうち `at` が古いものから外す
 
 # 完了（finish）
 

@@ -40,7 +40,7 @@ for (const density of ['airy', 'dense']) {
     await expect(page.locator('[data-role="usage-short"]')).toBeVisible();
     await expect(page.locator('[data-role="usage-fresh-short"]')).toBeVisible();
     await expect(page.locator('[data-role="token-note"]')).toBeVisible();
-    await expect(page.locator('.nuu-review')).toBeVisible();
+    await expect(page.locator('.nuu-review').first()).toBeVisible();
     await expectNoOverflow(page);
   });
 
