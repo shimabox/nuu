@@ -50,7 +50,8 @@ window.nuuDashboardData(
     { "name": "画面の確認用のプレビュー", "ref": "https://preview.example.com/search?price=1000-5000", "at": 1790606900, "note": "スマホの幅でも確かめる" }
   ],
   "reviews": [
-    { "provider": "github", "kind": "pr", "number": 128, "title": "検索 API に価格と在庫の絞り込みを追加する", "url": "https://github.com/example-shop/storefront/pull/128", "state": "open", "at": 1790606100 }
+    { "provider": "github", "kind": "pr", "number": 128, "title": "検索 API に価格と在庫の絞り込みを追加する", "url": "https://github.com/example-shop/storefront/pull/128", "state": "open", "at": 1790606100 },
+    { "provider": "github", "kind": "issue", "number": 121, "title": "評価の絞り込みは星の数を選べるようにしたい", "url": "https://github.com/example-shop/storefront/issues/121", "state": "open", "at": 1790604600 }
   ],
   "panels": [
     {

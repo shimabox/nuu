@@ -341,7 +341,7 @@ code, .nuu-code, .nuu-ref { font-family: var(--mono); font-size: 0.92em; }
 a.nuu-review-main .nuu-review-number { color: var(--accent-text); }
 .nuu-review-title { min-width: 0; font-weight: 650; line-height: 1.45; }
 a.nuu-review-main:hover .nuu-review-title { color: var(--accent-text); text-decoration: underline; }
-.nuu-review[data-state="merged"] .nuu-review-title, .nuu-review[data-state="closed"] .nuu-review-title { color: var(--fg-2); }
+.nuu-review[data-state="merged"] .nuu-review-title, .nuu-review[data-state="closed"] .nuu-review-title, .nuu-review[data-state="archived"] .nuu-review-title { color: var(--fg-2); }
 .nuu-review-meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 12px; min-width: 0; }
 .nuu-review-time { color: var(--muted); font-size: 0.86em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 

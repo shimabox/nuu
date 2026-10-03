@@ -224,11 +224,11 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     </div>
     <div class="shots">
       <figure class="shot">
-        <img src="images/dashboard-desktop.png" width="1280" height="1260" alt="作業ごとのダッシュボードの上部。状態、完了した手順、未回答の質問、止まっているもの、トークン量の要約。そのすぐ下に作業に関係する PR / MR を並べた「PR」の欄（GitHub の PR #128、題名、レビュー中の札、最終更新）。その下に利用者への質問と止まっているもの、未着手、進行中、待ち、停止、完了の列に分かれた手順のカンバンが並ぶ">
+        <img src="images/dashboard-desktop.png" width="1280" height="1311" alt="作業ごとのダッシュボードの上部。状態、完了した手順、未回答の質問、止まっているもの、トークン量の要約。そのすぐ下に作業に関係する GitHub の項目を並べた「GitHub」の欄（PR #128 と Issue #121、題名、レビュー中とオープンの札、最終更新）。その下に利用者への質問と止まっているもの、未着手、進行中、待ち、停止、完了の列に分かれた手順のカンバンが並ぶ">
         <figcaption>作業ごとのダッシュボード。架空の通販サイトの作業で作った見本です。</figcaption>
       </figure>
       <figure class="shot phone">
-        <img src="images/dashboard-mobile.png" width="390" height="1000" alt="スマホの幅で表示した作業ごとのダッシュボードの上部。要約と「PR」の欄が縦に並び、その下に利用者への質問が続く">
+        <img src="images/dashboard-mobile.png" width="390" height="1079" alt="スマホの幅で表示した作業ごとのダッシュボードの上部。要約と「GitHub」の欄（PR #128 と Issue #121）が縦に並ぶ">
         <figcaption>スマホの幅では 1 列に並びます。</figcaption>
       </figure>
     </div>
@@ -237,7 +237,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><b>手順はカンバンで</b><span>未着手、進行中、待ち、停止、完了の列に並びます。頼めばリストにも変えられます。</span></li>
       <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
-      <li><b>作業の PR / MR</b><span>作業に関係する GitHub の PR と GitLab の MR を、番号、題名、状態（下書き、レビュー中、マージ済み、閉じた）と一緒に載せます。一覧の行の札からも開けます。</span></li>
+      <li><b>作業の GitHub / GitLab</b><span>作業に関係する PR・MR、Issue、リリースと、作業で作ったリポジトリを、種類、番号か題名、状態と一緒に載せます。一覧の行の札からも開けます。</span></li>
       <li><b>トークン量の目安</b><span>作業本体と、ダッシュボードの作成と更新に分けて、使ったトークン量を出します。上部と一覧には、大半を占めるキャッシュの読み込みを除いた量を出し、合計は下部に並べます。ダッシュボードを作成・更新したモデルも並べます。</span></li>
       <li><b>作業したセッションに戻る</b><span>セッションの ID と、<code>claude --resume</code> で再開するコマンドを載せます。コピーして、作業した会話に戻れます。</span></li>
       <li><b>全体の一覧</b><span>全プロジェクトの作業を並べ、更新が止まっている作業を目立たせます。</span></li>
@@ -245,7 +245,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><b>好みはひとつ</b><span>テーマ、密度、アクセントカラー、タスクの表示を、すべてのダッシュボードで共通に使います。変えると、開いているページにも 10 秒ほどで届きます。</span></li>
     </ul>
     <figure class="shot">
-      <img src="images/index-desktop.png" width="1280" height="1419" alt="全プロジェクトの作業を進行中、中断中、完了に分けて並べた一覧。各行に作業名、プロジェクト名、セッションの ID の先頭、PR / MR の札（PR #128、MR !42 など。多いときは先頭の 3 件と「ほか n 件」）、状態、完了した手順、未回答の質問、止まっているもの、トークン量が並び、15 分以上更新のない進行中の作業は目立たせる">
+      <img src="images/index-desktop.png" width="1280" height="1451" alt="全プロジェクトの作業を進行中、中断中、完了に分けて並べた一覧。各行に作業名、プロジェクト名、セッションの ID の先頭、GitHub / GitLab の項目の札（PR #128、MR !42、Issue #121、リリース v2.0.0、リポジトリ api-guide など。多いときは先頭の 3 件と「ほか n 件」）、状態、完了した手順、未回答の質問、止まっているもの、トークン量が並び、15 分以上更新のない進行中の作業は目立たせる">
       <figcaption>全プロジェクトの作業の一覧。</figcaption>
     </figure>
     <figure class="shot">

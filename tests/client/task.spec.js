@@ -151,7 +151,7 @@ test.describe('描画', () => {
   });
 });
 
-test.describe('PR / MR', () => {
+test.describe('GitHub / GitLab の項目', () => {
   const review = (overrides) => Object.assign({
     provider: 'github', kind: 'pr', number: 7, title: '題名', url: 'https://github.com/example/app/pull/7', state: 'open', at: 1790606000,
   }, overrides);
@@ -160,9 +160,9 @@ test.describe('PR / MR', () => {
   test('要約のすぐ下に欄を置き、番号と題名を新しいタブで開くリンクにする', async ({ page }) => {
     await openAt(page, board.taskUrl());
     const section = page.locator('[data-slot="reviews"]');
-    await expect(section).toHaveAttribute('aria-label', 'PR');
-    await expect(section.locator('.nuu-h2')).toHaveText('PR');
-    await expect(section.locator('.nuu-count')).toHaveText('1 件');
+    await expect(section).toHaveAttribute('aria-label', 'GitHub');
+    await expect(section.locator('.nuu-h2')).toHaveText('GitHub');
+    await expect(section.locator('.nuu-count')).toHaveText('2 件');
     expect(await section.evaluate((node) => node.previousElementSibling.getAttribute('data-slot'))).toBe('stats');
     const row = rows(page).first();
     await expect(row.locator('.nuu-review-provider')).toHaveText('GitHub PR');
@@ -197,7 +197,7 @@ test.describe('PR / MR', () => {
     }
   });
 
-  test('見出しと aria-label は、GitHub だけなら PR、GitLab だけなら MR、両方あれば PR / MR にし、読み直して中身が変わると切り替える', async ({ page }) => {
+  test('見出しと aria-label はサービス名にし、両方あれば GitHub / GitLab にして、読み直して中身が変わると切り替える', async ({ page }) => {
     const gitlab = (overrides) => review(Object.assign({
       provider: 'gitlab', kind: 'mr', number: 12, url: 'https://gitlab.com/example/app/-/merge_requests/12',
     }, overrides));
@@ -211,24 +211,68 @@ test.describe('PR / MR', () => {
     data.reviews = [review({ number: 1, url: 'https://github.com/example/app/pull/1' }), review({ number: 2, url: 'https://github.com/example/app/pull/2' })];
     board.writeTask(SAMPLE, data);
     await openAt(page, board.taskUrl());
-    await expectTitle('PR', 2);
+    await expectTitle('GitHub', 2);
 
     data.reviews = [gitlab({ number: 12 }), gitlab({ number: 13, url: 'https://gitlab.com/example/app/-/merge_requests/13' })];
     board.writeTask(SAMPLE, data);
     await nextPoll(page);
-    await expectTitle('MR', 2);
+    await expectTitle('GitLab', 2);
     await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitLab MR', 'GitLab MR']);
 
     data.reviews = [gitlab(), review()];
     board.writeTask(SAMPLE, data);
     await nextPoll(page);
-    await expectTitle('PR / MR', 2);
+    await expectTitle('GitHub / GitLab', 2);
     await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitLab MR', 'GitHub PR']);
 
     data.reviews = [review()];
     board.writeTask(SAMPLE, data);
     await nextPoll(page);
-    await expectTitle('PR', 1);
+    await expectTitle('GitHub', 1);
+  });
+
+  test('Issue は番号で、リリースとリポジトリは題名で表し、種類ごとの状態を色と記号と文字で示す', async ({ page }) => {
+    const data = sample();
+    data.reviews = [
+      review({ kind: 'issue', number: 9, title: '要望', url: 'https://github.com/example/app/issues/9', state: 'open', at: 1790607000 }),
+      review({ provider: 'gitlab', kind: 'issue', number: 3, title: '不具合', url: 'https://gitlab.com/example/app/-/issues/3', state: 'closed', at: 1790606900 }),
+      { provider: 'github', kind: 'release', title: 'v1.2.0', url: 'https://github.com/example/app/releases/tag/v1.2.0', state: 'published', at: 1790606800 },
+      { provider: 'gitlab', kind: 'release', title: 'v2.0.0-rc.1', url: 'https://gitlab.com/example/app/-/releases/v2.0.0-rc.1', state: 'draft', at: 1790606700 },
+      { provider: 'github', kind: 'repo', title: 'example/new-tool', url: 'https://github.com/example/new-tool', state: 'public', at: 1790606600 },
+      { provider: 'gitlab', kind: 'repo', title: 'group/internal', url: 'https://gitlab.com/group/internal', state: 'private', at: 1790606500 },
+      { provider: 'github', kind: 'repo', title: 'example/old-tool', url: 'https://github.com/example/old-tool', state: 'archived', at: 1790606400 },
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    await expect(rows(page).locator('.nuu-review-provider')).toHaveText([
+      'GitHub Issue', 'GitLab Issue', 'GitHub リリース', 'GitLab リリース', 'GitHub リポジトリ', 'GitLab リポジトリ', 'GitHub リポジトリ',
+    ]);
+    // GitLab の Issue は # で書く。リリースとリポジトリは番号を出さず、題名だけを出す。
+    await expect(rows(page).locator('.nuu-review-main')).toHaveText([
+      '#9要望', '#3不具合', 'v1.2.0', 'v2.0.0-rc.1', 'example/new-tool', 'group/internal', 'example/old-tool',
+    ]);
+    await expect(rows(page).nth(2).locator('.nuu-review-number')).toHaveCount(0);
+    await expect(rows(page).locator('.nuu-review-state')).toHaveText(['オープン', 'クローズ', '公開', '下書き', '公開', '非公開', 'アーカイブ']);
+    const tones = await rows(page).locator('.nuu-review-state').evaluateAll((nodes) => nodes.map((n) => n.getAttribute('data-tone')));
+    expect(tones).toEqual(['doing', 'done', 'done', 'todo', 'done', 'todo', 'todo']);
+    for (const badge of await rows(page).locator('.nuu-review-state').all()) {
+      await expect(badge.locator('svg.nuu-icon')).toHaveCount(1);
+    }
+    await expect(page.locator('[data-slot="reviews"]')).toHaveAttribute('aria-label', 'GitHub / GitLab');
+  });
+
+  test('種類に合わない状態は、その種類の最初の状態として、知らない種類は PR / MR として出す', async ({ page }) => {
+    const data = sample();
+    data.reviews = [
+      { provider: 'github', kind: 'repo', title: 'example/app', url: 'https://github.com/example/app', state: 'merged', at: 1790607000 },
+      { provider: 'github', kind: 'release', title: 'v1.0.0', url: 'https://github.com/example/app/releases/tag/v1.0.0', state: 'open', at: 1790606900 },
+      review({ provider: 'gitlab', kind: 'gist', number: 4, url: 'https://gitlab.com/example/app/-/merge_requests/4', state: 'archived', at: 1790606800 }),
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    await expect(rows(page).locator('.nuu-review-state')).toHaveText(['公開', '公開', 'レビュー中']);
+    await expect(rows(page).locator('.nuu-review-provider')).toHaveText(['GitHub リポジトリ', 'GitHub リリース', 'GitLab MR']);
+    await expect(rows(page).last().locator('.nuu-review-number')).toHaveText('!4');
   });
 
   test('https: 以外の URL はリンクにせず、題名などの HTML の断片は文字として出す', async ({ page }) => {
@@ -250,7 +294,7 @@ test.describe('PR / MR', () => {
     expect(await page.evaluate(() => window.__xss)).toBeUndefined();
   });
 
-  test('PR / MR がないか空なら欄を出さず、足されたら出す', async ({ page }) => {
+  test('項目がないか空なら欄を出さず、足されたら出す', async ({ page }) => {
     const data = sample();
     delete data.reviews;
     board.writeTask(SAMPLE, data);

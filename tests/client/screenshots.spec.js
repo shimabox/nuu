@@ -57,7 +57,7 @@ test.describe('説明ページの画像', () => {
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-usage.png'), fullPage: true,
         clip: await band(page, '#usage', '#usage') });
 
-      // スマホの幅: 上端から 1000px。上部の要約と PR / MR の欄が収まらなければ、収まるところまで伸ばす。
+      // スマホの幅: 上端から 1000px。上部の要約と GitHub / GitLab の欄が収まらなければ、収まるところまで伸ばす。
       await page.setViewportSize({ width: 390, height: 844 });
       const mobile = await topUntil(page, '[data-slot="reviews"]', '[data-slot="attention"]');
       await page.screenshot({ path: path.join(DOCS_IMAGES, 'dashboard-mobile.png'), fullPage: true,

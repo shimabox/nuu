@@ -171,15 +171,20 @@ check 'setup でスタブができたかを 1 回確かめる' body_has '同じ�
 check 'スタブがなければその旨を返す' body_has 'ページ（.html）ができていません'
 check 'setup の返答でダッシュボードのパスを返す' body_has '以後の update と finish でこのパスを渡す'
 check '作業ディレクトリにはダッシュボードを作らない' fails grep -q 'claude-progress' <<<"$body"
-check 'setup で渡された PR / MR を reviews に書く' body_has '作業に関係する PR / MR が渡されたら `reviews` に書く'
-check 'builder の例に PR / MR（reviews）が入っている' body_has '  "reviews": ['
+check 'setup で渡された GitHub / GitLab の項目を reviews に書く' body_has '作業に関係する GitHub / GitLab の項目が渡されたら `reviews` に書く'
+check 'builder の例に GitHub / GitLab の項目（reviews）が入っている' body_has '  "reviews": ['
 check 'reviews は省略できる' body_has '`note` と `reviews` は省略できる'
-check 'PR / MR の kind は provider で決まる' body_has '`kind` は、`github` なら `pr`、`gitlab` なら `mr` に限る'
-check 'PR / MR の状態の語彙を示す' body_has '`state` は `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）'
+check '項目の種類を示し、pr と mr は provider で決まる' body_has '`kind` は `pr`（Pull Request）、`mr`（Merge Request）、`issue`、`release`、`repo`。`pr` は `github`、`mr` は `gitlab` に限る'
+check '番号は PR / MR / Issue だけに書く' body_has '`number` は `pr`・`mr`・`issue` だけに書く 1 以上の整数'
+check 'リリースとリポジトリの題名の書き方を示す' body_has '`release` はタグかリリース名（例: `v1.2.0`）、`repo` は `owner/name` の形のリポジトリ名'
+check 'PR / MR の状態の語彙を示す' body_has '`pr`・`mr`: `draft`（下書き）、`open`（レビュー中）、`merged`（マージ済み）、`closed`（閉じた）'
+check 'Issue の状態の語彙を示す' body_has '`issue`: `open`（オープン）、`closed`（クローズ）'
+check 'リリースの状態の語彙を示す' body_has '`release`: `draft`（下書き）、`published`（公開）'
+check 'リポジトリの状態の語彙を示す' body_has '`repo`: `public`（公開）、`private`（非公開）、`archived`（アーカイブ）'
 check 'PR / MR の url は https:// だけ' body_has '`url` は `https://` で始まるものだけを書ける'
-check '同じ url の PR / MR は 1 つだけ' body_has '同じ `url` の要素は 1 つだけにする'
-check 'PR / MR の上限を示す（20 件、題名 200 字、url 500 字）' body_has '上限: 20 件、題名 200 字、`url` 500 字'
-check 'ページは PR / MR の状態を取りにいかない' body_has 'ページは PR / MR の状態を取りにいかないので、渡された値だけを載せる'
+check '同じ url の項目は 1 つだけ' body_has '同じ `url` の要素は 1 つだけにする'
+check '項目の上限を示す（20 件、題名 200 字、url 500 字）' body_has '上限: 20 件、題名 200 字、`url` 500 字'
+check 'ページは項目の状態を取りにいかない' body_has 'ページは項目の状態を取りにいかないので、渡された値だけを載せる'
 
 echo '== 更新専用エージェントの定義 =='
 
@@ -224,16 +229,19 @@ check 'updater は途中で止めた作業を中断中にする' updater_says '`
 check 'updater は再開した作業を進行中に戻す' updater_says '再開したと渡されたら、`status` を `active`（進行中）に戻す'
 check 'updater は外すときに status を removed にする Edit を 1 回だけ行う' updater_says '`status` を `removed` にする Edit を 1 回だけ行う'
 check 'updater は消すときも作業のファイルに触れない' updater_says 'ファイルは呼び出し元が消す'
-check 'updater は PR / MR の追加と更新を既存の項目の更新として扱う' \
+check 'updater は GitHub / GitLab の項目の追加と更新を既存の項目の更新として扱う' \
   updater_says '要素を足すことと、同じ `url` の要素の `state`、`title`、`at` を更新することは、既存の項目の更新として扱い、構成の見直しには回さない'
-check 'updater は同じ url の要素の状態と題名と at を書き換える' updater_says '渡された PR / MR と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える'
-check 'updater は同じ url の PR / MR を 2 つ作らない' updater_says '同じ `url` の要素を 2 つ作らない'
-check 'updater は初めての PR / MR で reviews を作る' updater_says 'PR / MR を初めて載せるときは、`reviews` の配列を作る'
-check 'updater も kind を provider に合わせる' updater_says '`kind` は、`github` なら `pr`、`gitlab` なら `mr`'
-check 'updater も PR / MR の url を https:// に限る' updater_says '`url` は `https://` で始まるものだけを書ける'
-check 'updater は PR / MR の上限を守る（20 件、題名 200 字、url 500 字）' updater_says '上限は 20 件、題名 200 字、`url` 500 字'
+check 'updater は同じ url の要素の状態と題名と at を書き換える' updater_says '渡された項目と同じ `url` の要素があれば、その `state`、`title`、`at` だけを書き換える'
+check 'updater は同じ url の項目を 2 つ作らない' updater_says '同じ `url` の要素を 2 つ作らない'
+check 'updater は初めての項目で reviews を作る' updater_says 'GitHub / GitLab の項目を初めて載せるときは、`reviews` の配列を作る'
+check 'updater も pr と mr を provider に合わせる' updater_says '`kind` は `pr`、`mr`、`issue`、`release`、`repo` で、`pr` は `github`、`mr` は `gitlab` に限る'
+check 'updater はリリースとリポジトリに番号を書かない' updater_says 'リリースとリポジトリは `number` を書かずに'
+check 'updater にも種類ごとの状態を示す' updater_says '  - `repo`: `public`（公開）、`private`（非公開）、`archived`（アーカイブ）'
+check 'updater は上限を超えたら終わった項目の古いものから外す' updater_says '`merged`、`closed`、`archived` のもののうち `at` が古いものから外す'
+check 'updater も項目の url を https:// に限る' updater_says '`url` は `https://` で始まるものだけを書ける'
+check 'updater は項目の上限を守る（20 件、題名 200 字、url 500 字）' updater_says '上限は 20 件、題名 200 字、`url` 500 字'
 check 'updater は要素を初めて足すときに決まった形で書く' updater_says '要素を初めて足すときは、この形のとおりに書く。ここにない項目名と値は作らない'
-check 'updater はまだない種類の要素も推測せずに書く' updater_says '今の JSON にまだない種類の要素（質問、止まっているもの、成果物、PR / MR など）を初めて足すときも、推測せずに「データの形」を見て書く'
+check 'updater はまだない種類の要素も推測せずに書く' updater_says '今の JSON にまだない種類の要素（質問、止まっているもの、成果物、GitHub / GitLab の項目など）を初めて足すときも、推測せずに「データの形」を見て書く'
 check 'updater は呼び出し元の言葉を決まった語彙に直す' updater_says '決まった語彙（進行中なら `doing`）に直して書く'
 check 'updater に作業のデータの項目を示す' \
   updater_says '`schema`（`1`）、`project`、`slug`、`title`、`summary`、`status`、`startedAt`、`updatedAt`、`tasks`、`questions`、`blockers`、`artifacts`、`panels` と、省略できる `reviews`'
@@ -310,11 +318,16 @@ check '進行中の作業は消す前に確かめる' rules_have '進行中の�
 check '途中で止めたら中断中にして報告する' rules_have '利用者が作業を途中で止めたら、`dashboard-updater` で中断中に更新し'
 check '途中で止めた作業は完了にしない' rules_have '中断中に更新し、終わるのを待ってから利用者に報告する。完了にはしない'
 check '再開したら進行中に戻す' rules_have '再開したら、進行中に戻してから続ける'
-check 'PR / MR を作った、状態が変わった、見つけたときに載せる' \
-  rules_have 'Merge Request（MR）を作ったとき、その状態が変わったとき（下書きから公開、マージ、閉じた）、作業に関係する既存の PR / MR を見つけたときは'
-check 'PR / MR の provider、番号、題名、URL、状態を updater に渡す' \
-  rules_have 'provider（github / gitlab）、番号、題名、URL、状態（draft / open / merged / closed）を `dashboard-updater` に渡して載せる'
-check 'setup のときに分かっている PR / MR は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
+check 'GitHub / GitLab の項目を作った、状態が変わった、見つけたときに載せる' \
+  rules_have '作業で GitHub / GitLab の項目（GitHub の Pull Request（PR）、GitLab の Merge Request（MR）、Issue、リリース、リポジトリ）を作ったとき、その状態が変わったとき'
+check '項目の provider、種類、番号、題名、URL、状態を updater に渡す' \
+  rules_have 'provider（github / gitlab）、種類（pr / mr / issue / release / repo）、番号（PR / MR / Issue だけ）、題名（リリースはタグ、リポジトリは owner/name）、URL、状態を `dashboard-updater` に渡して載せる'
+check '種類ごとの状態の語彙をルールに示す' \
+  rules_have '状態は、PR / MR が draft / open / merged / closed、Issue が open / closed、リリースが draft / published、リポジトリが public / private / archived'
+check 'リポジトリは作業で新しく作ったときだけ載せる' \
+  rules_have 'リポジトリは、その作業で新しく作ったときだけ載せる。作業対象となる既存のリポジトリは載せない'
+check '既存のものを見つけたときに載せるのは PR / MR、Issue、リリースだけ' rules_have '作業に関係する既存の PR / MR、Issue、リリースを見つけたときは'
+check 'setup のときに分かっている項目は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
 check 'updater に渡す手順の状態は決まった語彙で書く' \
   rules_have '`dashboard-updater` に渡す手順の状態は、todo / doing / waiting / blocked / done の言葉で書く（例: 進行中は doing）'
 check 'builder がパスを返したら好みを聞き直さない' \
@@ -712,7 +725,10 @@ expect_index '一覧の行には PR / MR の札に要る項目だけを持たせ
   '.items[] | select(.project == "sample-shop") | .reviews[0] | keys_unsorted | join(",")' 'provider,kind,number,url,state'
 expect_index '一覧の行の PR / MR は最終更新が新しい順' \
   '.items[] | select(.slug == "2026-09-26-0930-db-migration") | .reviews | map(.number) | join(",")' '305,87,301,298'
-expect_index 'PR / MR のない作業の行には reviews を持たせない' '.items[] | select(.project == "sample-docs") | has("reviews")' false
+expect_index 'リリースとリポジトリは、番号の代わりに題名を一覧の行に持たせる' \
+  '.items[] | select(.project == "sample-docs") | .reviews | map(.kind + ":" + .title + ":" + (has("number") | tostring)) | join(",")' \
+  'release:v2.0.0:false,repo:example-docs/api-guide:false'
+expect_index 'GitHub / GitLab の項目のない作業の行には reviews を持たせない' '.items[] | select(.project == "sample-min") | has("reviews")' false
 check 'ほかの作業のスタブは置かない（書いた作業だけ）' test ! -e "$DASH_DIR/sample-docs/2026-09-27-1010-api-guide.html"
 
 printf 'old\n' >"$DASH_DIR/${SAMPLE%.data.js}.html"
@@ -977,7 +993,9 @@ def size(name):
         return struct.unpack(">II", f.read(24)[16:24])
 width, height = size("dashboard-desktop.png")
 # 上端から手順のカンバンの終わりまで。作業の様子のパネルやセッションの欄までは入れない。
-sys.exit(0 if width == 1280 and 1100 <= height <= 1400 and size("dashboard-mobile.png") == (390, 1000) else 1)
+# スマホは上端から 1000px。上部の要約と GitHub / GitLab の欄が収まらなければ、収まるところまで伸ばす。
+mobile_width, mobile_height = size("dashboard-mobile.png")
+sys.exit(0 if width == 1280 and 1100 <= height <= 1400 and mobile_width == 390 and 1000 <= mobile_height <= 1200 else 1)
 PY
 for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png dashboard-usage.png; do
   check "README に ${image} を載せる" grep -qF "docs/images/${image}" "$ROOT/README.md"

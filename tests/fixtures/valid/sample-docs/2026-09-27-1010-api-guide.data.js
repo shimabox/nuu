@@ -27,6 +27,10 @@ window.nuuDashboardData(
   "artifacts": [
     { "name": "認証の節", "ref": "guide/auth.md", "at": 1790480000 }
   ],
+  "reviews": [
+    { "provider": "github", "kind": "repo", "title": "example-docs/api-guide", "url": "https://github.com/example-docs/api-guide", "state": "public", "at": 1790472000 },
+    { "provider": "github", "kind": "release", "title": "v2.0.0", "url": "https://github.com/example-docs/api-guide/releases/tag/v2.0.0", "state": "draft", "at": 1790484600 }
+  ],
   "panels": [
     {
       "id": "sections",

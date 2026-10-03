@@ -242,7 +242,7 @@
   {
     "file": "bad/review-dup-url.data.js",
     "as": "bad/review-dup-url.data.js",
-    "reason": "reviews[1].url: \"https://github.com/example/app/pull/7\" が重複しています。同じ PR / MR は 1 つにまとめ",
+    "reason": "reviews[1].url: \"https://github.com/example/app/pull/7\" が重複しています。同じ項目は 1 つにまとめ",
     "what": "PR の URL が重複"
   },
   {
@@ -284,7 +284,7 @@
   {
     "file": "bad/review-too-many.data.js",
     "as": "bad/review-too-many.data.js",
-    "reason": "reviews: 20 件以内にしてください（今は 21 件）。マージ済みか閉じたもののうち",
+    "reason": "reviews: 20 件以内にしてください（今は 21 件）。マージ済み、閉じた、アーカイブのもののうち",
     "what": "PR / MR が多すぎる"
   },
   {
@@ -292,6 +292,60 @@
     "as": "bad/review-not-array.data.js",
     "reason": "reviews: 配列にしてください",
     "what": "reviews が配列でない"
+  },
+  {
+    "file": "bad/review-release-open.data.js",
+    "as": "bad/review-release-open.data.js",
+    "reason": "reviews[0].state: \"open\" は使えません。draft / published",
+    "what": "リリースの状態が違う"
+  },
+  {
+    "file": "bad/review-repo-merged.data.js",
+    "as": "bad/review-repo-merged.data.js",
+    "reason": "reviews[0].state: \"merged\" は使えません。public / private / archived",
+    "what": "リポジトリの状態が違う"
+  },
+  {
+    "file": "bad/review-repo-no-owner.data.js",
+    "as": "bad/review-repo-no-owner.data.js",
+    "reason": "reviews[0].title: \"app\" は使えません。リポジトリは owner/name の形",
+    "what": "リポジトリ名に所有者がない"
+  },
+  {
+    "file": "bad/review-repo-trailing-slash.data.js",
+    "as": "bad/review-repo-trailing-slash.data.js",
+    "reason": "reviews[0].title: \"example/app/\" は使えません。リポジトリは owner/name の形",
+    "what": "リポジトリ名の末尾が /"
+  },
+  {
+    "file": "bad/review-issue-no-number.data.js",
+    "as": "bad/review-issue-no-number.data.js",
+    "reason": "reviews[0]: 項目 number がありません",
+    "what": "Issue に番号がない"
+  },
+  {
+    "file": "bad/review-release-number.data.js",
+    "as": "bad/review-release-number.data.js",
+    "reason": "reviews[0]: 知らない項目 \"number\"",
+    "what": "リリースに番号がある"
+  },
+  {
+    "file": "bad/review-unknown-kind.data.js",
+    "as": "bad/review-unknown-kind.data.js",
+    "reason": "reviews[0].kind: \"gist\" は使えません。pr / issue / release / repo",
+    "what": "種類が分からない"
+  },
+  {
+    "file": "bad/review-provider-object.data.js",
+    "as": "bad/review-provider-object.data.js",
+    "reason": "reviews[0].provider: {\"name\": \"github\"} は使えません",
+    "what": "provider と種類がオブジェクト"
+  },
+  {
+    "file": "bad/review-kind-array.data.js",
+    "as": "bad/review-kind-array.data.js",
+    "reason": "reviews[0].kind: [\"pr\"] は使えません。pr / issue / release / repo",
+    "what": "種類が配列"
   },
   {
     "file": "bad/deeper/nested.data.js",
@@ -369,12 +423,18 @@
     "file": "index/review-title.data.js",
     "as": "index.data.js",
     "reason": "items[0].reviews[0]: 知らない項目 \"title\"",
-    "what": "一覧の PR / MR に表示しない項目がある"
+    "what": "一覧の PR に表示しない項目（題名）がある"
   },
   {
     "file": "index/review-http-url.data.js",
     "as": "index.data.js",
     "reason": "items[0].reviews[0].url: \"http://github.com/example/app/pull/7\" は使えません",
     "what": "一覧の PR / MR の URL が http"
+  },
+  {
+    "file": "index/review-release-no-title.data.js",
+    "as": "index.data.js",
+    "reason": "items[0].reviews[0]: 項目 title がありません",
+    "what": "一覧のリリースに題名がない"
   }
 ]
