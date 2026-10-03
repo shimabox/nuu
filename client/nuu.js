@@ -24,8 +24,10 @@
     waiting: { label: '待ち', icon: 'waiting' },
     blocked: { label: '停止', icon: 'blocked' },
     done: { label: '完了', icon: 'done' },
-    failed: { label: '失敗', icon: 'failed' }
+    failed: { label: '失敗', icon: 'failed' },
+    skipped: { label: '見送り', icon: 'skipped' }
   };
+  // 見送りの列は、見送った手順があるときだけ出す。
   var TASK_COLUMNS = ['todo', 'doing', 'waiting', 'blocked', 'done'];
   var WORK = {
     active: { label: '進行中', icon: 'doing', tone: 'doing' },
@@ -252,7 +254,8 @@
     down: [['path', { d: 'M8 3v9.5M4.2 8.8L8 12.6l3.8-3.8' }]],
     copy: [['rect', { x: 5.2, y: 5.2, width: 8, height: 8, rx: 1.6 }], ['path', { d: 'M10.8 5.2V3.6a1.4 1.4 0 0 0-1.4-1.4H3.6a1.4 1.4 0 0 0-1.4 1.4v5.8a1.4 1.4 0 0 0 1.4 1.4h1.6' }]],
     external: [['path', { d: 'M9.5 2.5h4v4M13.5 2.5L7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3' }]],
-    file: [['path', { d: 'M4 1.8h5.2l3 3v9.4H4z' }], ['path', { d: 'M9 1.8v3.2h3.2' }]]
+    file: [['path', { d: 'M4 1.8h5.2l3 3v9.4H4z' }], ['path', { d: 'M9 1.8v3.2h3.2' }]],
+    skipped: [['circle', { cx: 8, cy: 8, r: 5.8 }], ['path', { d: 'M4 12L12 4' }]]
   };
 
   function icon(name) {
@@ -276,10 +279,14 @@
   }
 
   // 状態は色と、記号と、文字の 3 つで示す。
+  // label を渡すと札の文字をその文字にし、状態名は title に添える（表のセルや項目と値で、書いた文字を出すとき）。
+  // 見送りは、書いた文字のほかに「見送り」の文字も札に出す。色と記号だけでは、ほかの状態と見分けにくいため。
   function badge(state, label, extraClass) {
     var key = stateOf(state);
-    return h('span', { class: 'nuu-badge' + (extraClass ? ' ' + extraClass : ''), 'data-tone': key }, [
+    var own = label !== undefined && label !== STATES[key].label;
+    return h('span', { class: 'nuu-badge' + (extraClass ? ' ' + extraClass : ''), 'data-tone': key, title: label === undefined ? null : STATES[key].label }, [
       icon(STATES[key].icon),
+      key === 'skipped' && own ? h('span', { class: 'nuu-badge-state', text: STATES[key].label }) : null,
       h('span', { text: label === undefined ? STATES[key].label : label })
     ]);
   }
@@ -523,7 +530,9 @@
     if (!input) return null;
     var tasks = input.tasks;
     var done = tasks.filter(function (t) { return t.status === 'done'; }).length;
-    var head = sectionHead('手順', tasks.length ? done + ' / ' + tasks.length + ' 完了' : null);
+    // 見送った手順は、やる手順の数に入れない。
+    var total = tasks.filter(function (t) { return t.status !== 'skipped'; }).length;
+    var head = sectionHead('手順', tasks.length ? done + ' / ' + total + ' 完了' : null);
     if (!tasks.length) return [head, empty('手順はまだありません')];
     if (input.view === 'list') {
       return [head, h('ol', { class: 'nuu-tasklist', 'data-view': 'list' }, tasks.map(function (task) {
@@ -535,7 +544,8 @@
         ]);
       }))];
     }
-    return [head, h('div', { class: 'nuu-kanban', 'data-view': 'kanban' }, TASK_COLUMNS.map(function (column) {
+    var columns = TASK_COLUMNS.concat(tasks.some(function (t) { return stateOf(t.status) === 'skipped'; }) ? ['skipped'] : []);
+    return [head, h('div', { class: 'nuu-kanban', 'data-view': 'kanban', 'data-columns': columns.length }, columns.map(function (column) {
       var cards = tasks.filter(function (t) { return stateOf(t.status) === column; });
       return h('section', { class: 'nuu-column' + (cards.length ? '' : ' is-empty'), 'data-tone': column, 'aria-label': STATES[column].label }, [
         h('div', { class: 'nuu-column-head' }, [
@@ -926,7 +936,8 @@
       any = slot(root, 'stats', d && {
         status: workStatus(d.status),
         done: tasks.filter(function (t) { return t.status === 'done'; }).length,
-        total: tasks.length,
+        // 見送った手順は、やる手順の数に入れない。
+        total: tasks.filter(function (t) { return t.status !== 'skipped'; }).length,
         questions: questions.filter(function (q) { return !isAnswered(q); }).length,
         blockers: blockers.length,
         tokens: u ? freshTokens(u.totals) : null

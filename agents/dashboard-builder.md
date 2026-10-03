@@ -123,7 +123,7 @@ window.nuuDashboardData(
 
 - 必須の項目は例のとおり。書けない項目名は使わない（知らない項目は拒否される）。`note` と `reviews` は省略できる。ほかの配列は、なければ `[]` にする
 - `status` は `active`（進行中）、`paused`（中断中）、`done`（完了）、`removed`（一覧から外す）。setup では `active`
-- 手順の `status` は `todo | doing | waiting | blocked | done`。`id` は 1 からの整数で重ねない
+- 手順の `status` は `todo | doing | waiting | blocked | done | skipped`。`skipped`（見送り）は、やらないと決めた手順に使い、理由を `note` に書く。`id` は 1 からの整数で重ねない
 - 質問は `question`、`default`（既定の対応）、`proceeding`（既定の対応で進めているか）、`askedAt`。回答が出たら `answer` と `answeredAt` を足す
 - 止まっているものは `what`、`why`、`since`、`next`。成果物は `name`、`ref`（パスまたは URL）、`at`、任意の `note`
 - `startedAt` と `updatedAt` は setup で取った同じ時刻でよい。`updatedAt` は書き換えるたびに取り直す
@@ -169,7 +169,7 @@ window.nuuDashboardData(
 | `flow` | 段階の流れ | `steps: [{ label, state, note? }]`。左から右の順。12 個まで |
 
 - どのパネルも `id`（英小文字・数字・`-`、作業の中で重ねない）、`type`、`title` を持つ。任意で `note` と `wide`（`true` で横幅いっぱい）
-- `state` は `todo | doing | waiting | blocked | done | failed`
+- `state` は `todo | doing | waiting | blocked | done | failed | skipped`。`skipped`（見送り）は、やらないと決めたものに使う
 - 7 種に収まらない内容は `table` か `text` で表す
 - 例: 移行作業ならテーブルごとの `table` と件数の `progress`、テストの修正なら失敗数の `trend` と直したテストの `grid`、案の比較なら観点ごとの `table` と決めたことの `text`、段階のある作業なら `flow`
 - 手順のカンバンと同じことを別のパネルに書かない。手順はパネルにせず `tasks` に書く

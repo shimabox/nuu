@@ -151,6 +151,81 @@ test.describe('描画', () => {
   });
 });
 
+test.describe('見送り', () => {
+  test('見送った手順は、見送りの列に置き、完了した手順の数に入れない。見送りがなければ列を出さない', async ({ page }) => {
+    const data = sample();
+    await openAt(page, board.taskUrl());
+    await expect(page.locator('.nuu-column')).toHaveCount(5);
+    await expect(page.locator('.nuu-column[data-tone="skipped"]')).toHaveCount(0);
+
+    data.tasks = [
+      { id: 1, title: '調べる', status: 'done' },
+      { id: 2, title: '直す', status: 'done' },
+      { id: 3, title: 'グラフを足す', status: 'skipped', note: '次の作業に回した' },
+    ];
+    board.writeTask(SAMPLE, data);
+    await nextPoll(page);
+    await expect(page.locator('.nuu-column')).toHaveCount(6);
+    const column = page.locator('.nuu-column[data-tone="skipped"]');
+    await expect(column.locator('.nuu-column-name')).toHaveText('見送り');
+    await expect(column.locator('.nuu-task')).toHaveCount(1);
+    await expect(column.locator('.nuu-task')).toContainText('次の作業に回した');
+    // 6 列でも、どの列も同じ行に並ぶ。
+    const tops = await page.locator('.nuu-column').evaluateAll((nodes) => nodes.map((n) => Math.round(n.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(1);
+    await expect(page.locator('[data-slot="stats"]')).toContainText('2 / 2');
+    await expect(page.locator('[data-slot="tasks"] .nuu-count').first()).toHaveText('2 / 2 完了');
+  });
+
+  test('狭い画面では、見送りの列があってもカンバンを縦に積む', async ({ page }) => {
+    const data = sample();
+    data.tasks.push({ id: 99, title: '見送った手順', status: 'skipped' });
+    board.writeTask(SAMPLE, data);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openAt(page, board.taskUrl());
+    await expect(page.locator('.nuu-column')).toHaveCount(6);
+    const lefts = await page.locator('.nuu-column').evaluateAll((nodes) => nodes.map((n) => Math.round(n.getBoundingClientRect().left)));
+    expect(new Set(lefts).size).toBe(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test('表と項目・値の札は書いた文字を出して状態名を title に添え、見送りは「見送り」の文字も出す', async ({ page }) => {
+    const data = sample();
+    data.panels = [
+      { id: 'files', type: 'table', title: '更新するファイル', columns: [{ label: 'ファイル' }, { label: '更新' }], rows: [['meta.json', { text: '対象外', state: 'skipped' }]] },
+      { id: 'gates', type: 'keyvalue', title: 'ゲート', items: [{ label: 'E2E', value: '今回は実行しない', state: 'skipped' }] },
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    // 見送りは、書いた文字のほかに「見送り」の文字も札に出す。
+    const cell = page.locator('.nuu-panel[data-type="table"] .nuu-badge');
+    await expect(cell).toHaveText('見送り対象外');
+    await expect(cell.locator('.nuu-badge-state')).toHaveText('見送り');
+    await expect(cell).toHaveAttribute('title', '見送り');
+    await expect(cell).toHaveAttribute('data-tone', 'skipped');
+    const value = page.locator('.nuu-panel[data-type="keyvalue"] .nuu-badge');
+    await expect(value.locator('.nuu-badge-state')).toHaveText('見送り');
+    await expect(value).toHaveAttribute('title', '見送り');
+    await expect(value).toHaveAttribute('data-tone', 'skipped');
+  });
+
+  test('パネルの見送りは、ほかの状態と違う色と記号と文字で示す', async ({ page }) => {
+    const data = sample();
+    data.panels = [
+      { id: 'checks', type: 'grid', title: '確認', items: [{ label: 'Chrome', state: 'done' }, { label: 'Safari', state: 'skipped' }, { label: 'Edge', state: 'todo' }] },
+      { id: 'stages', type: 'flow', title: '流れ', steps: [{ label: '公開', state: 'skipped' }] },
+    ];
+    board.writeTask(SAMPLE, data);
+    await openAt(page, board.taskUrl());
+    const cells = page.locator('.nuu-panel[data-type="grid"] .nuu-cell');
+    await expect(cells.nth(1)).toContainText('見送り');
+    const colors = await cells.evaluateAll((nodes) => nodes.map((n) => getComputedStyle(n).getPropertyValue('--tone').trim()));
+    expect(new Set(colors).size).toBe(3);
+    await expect(cells.nth(1).locator('svg.nuu-icon')).toHaveCount(1);
+    await expect(page.locator('.nuu-panel[data-type="flow"] .nuu-step-state')).toHaveText('見送り');
+  });
+});
+
 test.describe('GitHub / GitLab の項目', () => {
   const review = (overrides) => Object.assign({
     provider: 'github', kind: 'pr', number: 7, title: '題名', url: 'https://github.com/example/app/pull/7', state: 'open', at: 1790606000,

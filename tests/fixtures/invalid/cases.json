@@ -288,6 +288,18 @@
     "what": "PR / MR が多すぎる"
   },
   {
+    "file": "bad/done-todo-task.data.js",
+    "as": "bad/done-todo-task.data.js",
+    "reason": "status: 完了（done）にするときは、未着手や途中の状態（todo / doing / waiting / blocked）を残せません。次の 1 件を最終状態（手順は done か skipped、パネルは done、failed、skipped）にしてください: tasks[1].status「テストを足す」（todo）",
+    "what": "完了なのに未着手の手順がある"
+  },
+  {
+    "file": "bad/done-panel-leftovers.data.js",
+    "as": "bad/done-panel-leftovers.data.js",
+    "reason": "次の 4 件を最終状態（手順は done か skipped、パネルは done、failed、skipped）にしてください: panels[0].rows[0][1].state「meta.json」（todo）、panels[1].items[0].state「Chrome」（waiting）、panels[2].steps[0].state「公開」（doing）、panels[3].items[1].state「E2E」（blocked）",
+    "what": "完了なのにパネルに未着手や途中の値がある"
+  },
+  {
     "file": "bad/review-not-array.data.js",
     "as": "bad/review-not-array.data.js",
     "reason": "reviews: 配列にしてください",

@@ -49,8 +49,11 @@ MAX_ERRORS = 8  # 1 回に返す理由の数
 
 STATUSES = ("active", "paused", "done", "removed")
 INDEX_STATUSES = ("active", "paused", "done")
-TASK_STATES = ("todo", "doing", "waiting", "blocked", "done")
-STATES = ("todo", "doing", "waiting", "blocked", "done", "failed")
+TASK_STATES = ("todo", "doing", "waiting", "blocked", "done", "skipped")
+STATES = ("todo", "doing", "waiting", "blocked", "done", "failed", "skipped")
+# 作業を完了（done）にするときに残せない、未着手や途中の状態。やらないと決めたものは skipped（見送り）にする。
+UNFINISHED_STATES = ("todo", "doing", "waiting", "blocked")
+MAX_LEFTOVERS = 10  # 完了にできない理由に挙げる場所の数
 PANEL_TYPES = ("progress", "grid", "table", "keyvalue", "text", "trend", "flow")
 THEMES = ("dark", "light")
 DENSITIES = ("dense", "airy")
@@ -298,6 +301,59 @@ def check_task_data(c, data, project, slug):
 
     if "reviews" in data:
         check_reviews(c, "reviews", data["reviews"], ("title", "at"))
+
+    if data.get("status") == "done":
+        check_finished(c, data)
+
+
+def leftovers(data):
+    """完了の作業に残っている、未着手や途中の状態の場所と名前。形の崩れたところは、ほかの検査に任せて飛ばす。"""
+    found = []
+
+    def add(where, state, label):
+        if isinstance(state, str) and state in UNFINISHED_STATES:
+            name = f"「{label}」" if isinstance(label, str) and label.strip() else ""
+            found.append(f"{where}{name}（{state}）")
+
+    tasks = data.get("tasks")
+    for i, task in enumerate(tasks if isinstance(tasks, list) else []):
+        if isinstance(task, dict):
+            add(f"tasks[{i}].status", task.get("status"), task.get("title"))
+    panels = data.get("panels")
+    for i, panel in enumerate(panels if isinstance(panels, list) else []):
+        if not isinstance(panel, dict):
+            continue
+        where = f"panels[{i}]"
+        if panel.get("type") in ("grid", "keyvalue") and isinstance(panel.get("items"), list):
+            for j, item in enumerate(panel["items"]):
+                if isinstance(item, dict):
+                    add(f"{where}.items[{j}].state", item.get("state"), item.get("label"))
+        elif panel.get("type") == "flow" and isinstance(panel.get("steps"), list):
+            for j, step in enumerate(panel["steps"]):
+                if isinstance(step, dict):
+                    add(f"{where}.steps[{j}].state", step.get("state"), step.get("label"))
+        elif panel.get("type") == "table" and isinstance(panel.get("rows"), list):
+            for j, row in enumerate(panel["rows"]):
+                if not isinstance(row, list):
+                    continue
+                # 表のセルは、行の先頭のセルを名前にする。
+                first = row[0] if row and isinstance(row[0], str) else None
+                for k, cell in enumerate(row):
+                    if isinstance(cell, dict):
+                        add(f"{where}.rows[{j}][{k}].state", cell.get("state"), first)
+    return found
+
+
+def check_finished(c, data):
+    """完了の作業に、未着手や途中の状態を残させない。最終状態は呼び出し元から受け取り、推測で埋めない。"""
+    found = leftovers(data)
+    if not found:
+        return
+    rest = len(found) - MAX_LEFTOVERS
+    listed = "、".join(found[:MAX_LEFTOVERS]) + (f"、ほか {rest} 件" if rest > 0 else "")
+    c.error("status", f"完了（done）にするときは、未着手や途中の状態（todo / doing / waiting / blocked）を残せません。"
+            f"次の {len(found)} 件を最終状態（手順は done か skipped、パネルは done、failed、skipped）にしてください: {listed}。"
+            "最終状態が分からなければ推測で埋めず、この一覧を呼び出し元に返して受け取ってください")
 
 
 def known_kind(kind):

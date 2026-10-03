@@ -25,6 +25,7 @@
   --blocked: #FF7A7A;
   --done: #3DD68C;
   --failed: #FF6B9A;
+  --skipped: #9C95B8;
   --series-1: var(--accent);
   --series-2: #A99BFF;
   --series-3: #F5BE4A;
@@ -60,6 +61,7 @@
   --blocked: #CF2E2E;
   --done: #0A7F55;
   --failed: #B8205A;
+  --skipped: #6B6688;
   --series-2: #6D4ED8;
   --series-3: #B26A00;
   --series-4: #C7317E;
@@ -83,6 +85,7 @@
 [data-tone="blocked"] { --tone: var(--blocked); }
 [data-tone="done"] { --tone: var(--done); }
 [data-tone="failed"] { --tone: var(--failed); }
+[data-tone="skipped"] { --tone: var(--skipped); }
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -243,6 +246,7 @@ code, .nuu-code, .nuu-ref { font-family: var(--mono); font-size: 0.92em; }
 
 /* ---------------------------------------------------------------- バッジ */
 
+.nuu-badge-state { padding-right: 6px; border-right: 1px solid color-mix(in srgb, var(--tone) 45%, transparent); }
 .nuu-badge {
   display: inline-flex;
   align-items: center;
@@ -427,6 +431,7 @@ a.nuu-review-main:hover .nuu-review-title { color: var(--accent-text); text-deco
   gap: var(--gap);
   align-items: start;
 }
+.nuu-kanban[data-columns="6"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .nuu-column {
   min-width: 0;
   padding: 12px;
@@ -810,7 +815,7 @@ a.nuu-review-chip:hover { background: color-mix(in srgb, var(--tone) 24%, transp
 /* ---------------------------------------------------------------- 幅に合わせる */
 
 @media (max-width: 1080px) {
-  .nuu-kanban { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .nuu-kanban, .nuu-kanban[data-columns="6"] { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
   .nuu-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "main status" "stats stats" "time time"; }
   .nuu-row-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .nuu-row-stat { text-align: left; }
@@ -847,7 +852,7 @@ a.nuu-review-chip:hover { background: color-mix(in srgb, var(--tone) 24%, transp
   .nuu-stat:nth-child(5) { border-left: 1px solid var(--line); }
   .nuu-big { font-size: 1.55em; }
   .nuu-pair { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .nuu-kanban { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .nuu-kanban, .nuu-kanban[data-columns="6"] { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .nuu-column.is-empty { padding-top: 8px; padding-bottom: 8px; }
   .nuu-column.is-empty .nuu-column-head { border-bottom: 0; margin-bottom: 0; padding-bottom: 2px; }
   .nuu-column.is-empty .nuu-column-empty { display: none; }

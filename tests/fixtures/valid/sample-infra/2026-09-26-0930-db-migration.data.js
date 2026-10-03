@@ -11,7 +11,8 @@ window.nuuDashboardData(
   "tasks": [
     { "id": 1, "title": "検証環境で移行", "status": "done" },
     { "id": 2, "title": "本番で移行", "status": "done" },
-    { "id": 3, "title": "古い版を止める", "status": "done" }
+    { "id": 3, "title": "古い版を止める", "status": "done" },
+    { "id": 4, "title": "古い表を消す", "status": "skipped", "note": "PR #305 を下書きのまま、次の作業に回した" }
   ],
   "questions": [],
   "blockers": [],
@@ -33,6 +34,16 @@ window.nuuDashboardData(
         { "label": "検証環境", "state": "done" },
         { "label": "本番", "state": "done" },
         { "label": "停止", "state": "done" }
+      ]
+    },
+    {
+      "id": "checks",
+      "type": "grid",
+      "title": "移行後の確認",
+      "items": [
+        { "label": "件数の突き合わせ", "state": "done" },
+        { "label": "応答時間", "state": "done" },
+        { "label": "古い表の削除", "state": "skipped", "note": "次の作業に回した" }
       ]
     }
   ]
