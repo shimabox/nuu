@@ -160,7 +160,7 @@ check 'データファイルは決まった呼び出しの間に JSON だけを�
 for type in progress grid table keyvalue text trend flow; do
   check "パネルの種類 ${type} を示す" body_has "| \`${type}\` |"
 done
-check 'state の語彙を示す' body_has '`state` は `todo | doing | waiting | blocked | done | failed`'
+check 'state の語彙を示す' body_has '`state` は `todo | doing | waiting | blocked | done | failed | skipped`。`skipped`（見送り）は、やらないと決めたものに使う'
 check '収まらない内容は table か text で表す' body_has '7 種に収まらない内容は `table` か `text` で表す'
 check 'テンプレートを使い回さない' body_has 'テンプレートを使い回さない'
 check '手順のカンバンと同じことを別のパネルに書かない' body_has '手順のカンバンと同じことを別のパネルに書かない'
@@ -246,13 +246,16 @@ check 'updater は呼び出し元の言葉を決まった語彙に直す' update
 check 'updater に作業のデータの項目を示す' \
   updater_says '`schema`（`1`）、`project`、`slug`、`title`、`summary`、`status`、`startedAt`、`updatedAt`、`tasks`、`questions`、`blockers`、`artifacts`、`panels` と、省略できる `reviews`'
 check 'updater に作業の status の語彙を示す' updater_says '`status` は `active`（進行中）、`paused`（中断中）、`done`（完了）、`removed`（一覧から外す）'
-check 'updater に手順の status の語彙を示す' updater_says '手順の `status` は `todo | doing | waiting | blocked | done`'
+check 'updater に手順の status の語彙を示す' updater_says '手順の `status` は `todo | doing | waiting | blocked | done | skipped`。`skipped`（見送り）は、やらないと決めた手順に使い、理由を `note` に書く'
 check 'updater は進行中を doing にする' updater_says '進行中は `doing` にし、`in_progress` などほかの言葉は使わない'
 check 'updater の質問の形に proceeding を含める' updater_says '`proceeding`（既定の対応で進めているか。`true` か `false` で、省略しない）'
 check 'updater の止まっているものの形は what、why、since、next' updater_says '`what`（何が）、`why`（理由）、`since`（止まった時刻）、`next`（次にすること）。4 つとも書く'
 check 'updater の成果物の形は name、ref、at、note' updater_says '`name`、`ref`（パスまたは URL）、`at`、任意の `note`'
-check 'updater に panel の state の語彙を示す' updater_says '`state` は `todo | doing | waiting | blocked | done | failed`'
-check 'builder と updater の手順の status の語彙が同じ' body_has '手順の `status` は `todo | doing | waiting | blocked | done`'
+check 'updater に panel の state の語彙を示す' updater_says '`state` は `todo | doing | waiting | blocked | done | failed | skipped`'
+check 'updater は完了のときに未着手や途中の状態を残さない' updater_says '完了にするときは、手順とパネルの状態に `todo`、`doing`、`waiting`、`blocked` を残さない'
+check 'updater は最終状態を推測で埋めず、場所の一覧を返す' updater_says '最終状態が渡されていない値があれば、推測で埋めない。`status` を変えずに、残っている場所'
+check 'updater は検査に止められたら status を戻してから一覧を返す' updater_says '`status` を最初に読んだ値（`active` か `paused`）に戻す Edit をしてから、同じように一覧を返す。`done` のまま残さない'
+check 'builder と updater の手順の status の語彙が同じ' body_has '手順の `status` は `todo | doing | waiting | blocked | done | skipped`。`skipped`（見送り）は、やらないと決めた手順に使い、理由を `note` に書く'
 check 'builder と updater のパネルの中身の表が同じ' python3 - "$agent" "$updater" <<'PY'
 import re, sys
 rows = [[line for line in open(p, encoding="utf-8").read().splitlines() if re.match(r"\| `[a-z]+` \|", line)] for p in sys.argv[1:]]
@@ -329,7 +332,14 @@ check 'リポジトリは作業で新しく作ったときだけ載せる' \
 check '既存のものを見つけたときに載せるのは PR / MR、Issue、リリースだけ' rules_have '作業に関係する既存の PR / MR、Issue、リリースを見つけたときは'
 check 'setup のときに分かっている項目は builder に渡す' rules_have 'setup のときに分かっていれば `dashboard-builder` に渡す'
 check 'updater に渡す手順の状態は決まった語彙で書く' \
-  rules_have '`dashboard-updater` に渡す手順の状態は、todo / doing / waiting / blocked / done の言葉で書く（例: 進行中は doing）'
+  rules_have '`dashboard-updater` に渡す手順の状態は、todo / doing / waiting / blocked / done / skipped の言葉で書く（例: 進行中は doing、やらないと決めたものは skipped）'
+check '完了のときは手順とパネルの最終状態を渡す' rules_have '完了にするときは、手順と各パネルの値について最終状態も渡す'
+check '完了のとき、手順は done か skipped にする' rules_have '手順は、やったものを done、やらないと決めたものを skipped にする'
+check '完了のとき、パネルの値は done、failed、skipped にする' rules_have 'パネルの値は、やったものを done、うまくいかなかったものを failed、やらないと決めたものを skipped にする'
+check '完了のときに未着手や途中の状態を残さない' rules_have 'skipped には理由を添え、未着手や途中の状態を残さない'
+check '完了のとき、状態とは別に持つ文字の最終版も渡す' rules_have '状態とは別に文字を持つものは、最終の文字（例:「未実装」なら「対応済み」）も渡す'
+check 'updater は状態と一緒に最終の文字も書き換え、合わなければ場所を返す' updater_says '状態だけが渡され、今の文字（例:「未実装」）が最終状態と合わないときは、その文字も要る場所として扱う'
+check 'updater が場所を返したら最終状態を渡して呼び直す' rules_have '`dashboard-updater` が最終状態の要る場所を返したら、その状態を渡して呼び直す'
 check 'builder がパスを返したら好みを聞き直さない' \
   rules_have '`dashboard-builder` が作業ごとのダッシュボードのパスを返したら、好みは聞き直さない'
 check '好みを聞くのは NEEDS_STYLE のときだけ' \
@@ -662,7 +672,7 @@ data = json.loads(body)
 keys = lambda name: set().union(*(item.keys() for item in data[name]))
 ok = (
     keys("tasks") == {"id", "title", "status", "note"}
-    and {t["status"] for t in data["tasks"]} == {"todo", "doing", "waiting", "blocked", "done"}
+    and {t["status"] for t in data["tasks"]} == {"todo", "doing", "waiting", "blocked", "done", "skipped"}
     and keys("questions") == {"id", "question", "default", "proceeding", "askedAt", "answer", "answeredAt"}
     and keys("blockers") == {"what", "why", "since", "next"}
     and keys("artifacts") == {"name", "ref", "at", "note"}
@@ -728,6 +738,8 @@ expect_index '一覧の行の PR / MR は最終更新が新しい順' \
 expect_index 'リリースとリポジトリは、番号の代わりに題名を一覧の行に持たせる' \
   '.items[] | select(.project == "sample-docs") | .reviews | map(.kind + ":" + .title + ":" + (has("number") | tostring)) | join(",")' \
   'release:v2.0.0:false,repo:example-docs/api-guide:false'
+expect_index '見送った手順は、やる手順の数に入れない' \
+  '.items[] | select(.slug == "2026-09-26-0930-db-migration") | "\(.done)/\(.total)"' '3/3'
 expect_index 'GitHub / GitLab の項目のない作業の行には reviews を持たせない' '.items[] | select(.project == "sample-min") | has("reviews")' false
 check 'ほかの作業のスタブは置かない（書いた作業だけ）' test ! -e "$DASH_DIR/sample-docs/2026-09-27-1010-api-guide.html"
 

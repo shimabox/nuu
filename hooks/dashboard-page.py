@@ -119,7 +119,8 @@ def task_row(validate, project, slug, path):
         "title": data["title"],
         "status": data["status"],
         "done": sum(1 for task in data["tasks"] if task["status"] == "done"),
-        "total": len(data["tasks"]),
+        # 見送った手順は、やる手順の数に入れない。
+        "total": sum(1 for task in data["tasks"] if task["status"] != "skipped"),
         "questions": sum(1 for question in data["questions"] if not question.get("answer")),
         "blockers": len(data["blockers"]),
         "startedAt": data["startedAt"],

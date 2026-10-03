@@ -234,7 +234,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     </div>
     <ul class="features">
       <li><b>作業に合わせたパネル</b><span>進み具合の棒、マス目、表、項目と値、文章、推移のグラフ、段階の流れの 7 種類から、作業に合うものを選んで並べます。</span></li>
-      <li><b>手順はカンバンで</b><span>未着手、進行中、待ち、停止、完了の列に並びます。頼めばリストにも変えられます。</span></li>
+      <li><b>手順はカンバンで</b><span>未着手、進行中、待ち、停止、完了の列に並びます。やらないと決めた手順は「見送り」の列に置きます。頼めばリストにも変えられます。</span></li>
       <li><b>質問と既定の対応</b><span>判断が必要になっても止まらず、既定の対応で進めていることを載せます。</span></li>
       <li><b>止まっているもの</b><span>何が、なぜ、いつから止まっていて、次に何をするかを載せます。</span></li>
       <li><b>作業の GitHub / GitLab</b><span>作業に関係する PR・MR、Issue、リリースと、作業で作ったリポジトリを、種類、番号か題名、状態と一緒に載せます。一覧の行の札からも開けます。</span></li>
@@ -409,7 +409,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
       <li><span class="n">4</span><div class="body"><span class="tag go">止まらない</span><h3>判断が必要になったら</h3><p>質問と既定の対応をダッシュボードに載せ、既定の対応で作業を続けます。都合のよいときにダッシュボードで質問を確かめ、答えは Claude Code に伝えます。</p></div></li>
       <li><span class="n">5</span><div class="body"><span class="tag stop">承認を待つ</span><h3>取り消せない操作は別</h3><p>削除、push、送信のような取り消せない操作や外部に公開される操作は、既定の対応では進めず、承認を待ちます。その間も、進められるほかの手順があれば続けます。</p></div></li>
       <li><span class="n">6</span><div class="body"><span class="tag wait">待つ</span><h3>途中で止めたら、中断中にする</h3><p>「今日はここまで」のように止めると、ダッシュボードを中断中にしてから報告します。中断中の作業には、更新が止まっている警告を出しません。再開すると、進行中に戻してから続けます。</p></div></li>
-      <li><span class="n">7</span><div class="body"><span class="tag wait">待つ</span><h3>完了にして報告する</h3><p>作業が終わったら、ダッシュボードを完了にしてから報告します。一覧では、完了した作業の側に移ります。</p></div></li>
+      <li><span class="n">7</span><div class="body"><span class="tag wait">待つ</span><h3>完了にして報告する</h3><p>作業が終わったら、手順とパネルの最終状態を渡してダッシュボードを完了にし、それから報告します。完了の作業には未着手や途中の値を残しません。一覧では、完了した作業の側に移ります。</p></div></li>
     </ol>
   </section>
 

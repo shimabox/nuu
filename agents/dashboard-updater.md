@@ -61,7 +61,8 @@ window.nuuDashboardData(
     { "id": 2, "title": "API に並べ替えを足す", "status": "doing", "note": "昇順は対応済み" },
     { "id": 3, "title": "画面の並べ替え", "status": "waiting", "note": "デザインの確定待ち" },
     { "id": 4, "title": "負荷の確認", "status": "blocked" },
-    { "id": 5, "title": "公開", "status": "todo" }
+    { "id": 5, "title": "公開", "status": "todo" },
+    { "id": 6, "title": "並べ替えの保存", "status": "skipped", "note": "次の作業に回した" }
   ],
   "questions": [
     { "id": 1, "question": "価格が同じ商品はどう並べますか？", "default": "新しい順に並べる", "proceeding": true, "askedAt": 1790657700 },
@@ -91,7 +92,7 @@ window.nuuDashboardData(
 ```
 
 - `status` は `active`（進行中）、`paused`（中断中）、`done`（完了）、`removed`（一覧から外す）
-- 手順（`tasks`）は `id`、`title`、`status`、任意の `note`。手順の `status` は `todo | doing | waiting | blocked | done`。`id` は 1 からの整数で重ねない。進行中は `doing` にし、`in_progress` などほかの言葉は使わない
+- 手順（`tasks`）は `id`、`title`、`status`、任意の `note`。手順の `status` は `todo | doing | waiting | blocked | done | skipped`。`skipped`（見送り）は、やらないと決めた手順に使い、理由を `note` に書く。`id` は 1 からの整数で重ねない。進行中は `doing` にし、`in_progress` などほかの言葉は使わない
 - 質問（`questions`）は `id`、`question`、`default`（既定の対応）、`proceeding`（既定の対応で進めているか。`true` か `false` で、省略しない）、`askedAt`。回答が出たら `answer` と `answeredAt` を足す。`answeredAt` だけを書かない
 - 止まっているもの（`blockers`）は `what`（何が）、`why`（理由）、`since`（止まった時刻）、`next`（次にすること）。4 つとも書く。`reason` などほかの項目名は使わない
 - 成果物（`artifacts`）は `name`、`ref`（パスまたは URL）、`at`、任意の `note`。`path` や `url` などほかの項目名は使わない
@@ -111,7 +112,7 @@ window.nuuDashboardData(
 | `flow` | 段階の流れ | `steps: [{ label, state, note? }]`。左から右の順。12 個まで |
 
 - どのパネルも `id`、`type`、`title` を持つ。任意で `note` と `wide`
-- `state` は `todo | doing | waiting | blocked | done | failed`
+- `state` は `todo | doing | waiting | blocked | done | failed | skipped`。`skipped`（見送り）は、やらないと決めたものに使う
 
 # 変えてよいもの
 
@@ -136,7 +137,13 @@ window.nuuDashboardData(
 
 # 完了（finish）
 
-`status` を `done`（完了）にし、すべての手順の状態と最終的な成果物を、渡された内容に合わせる。
+`status` を `done`（完了）にし、すべての手順の状態、パネルの値、最終的な成果物を、渡された内容に合わせる。
+
+完了にするときは、手順とパネルの状態に `todo`、`doing`、`waiting`、`blocked` を残さない。手順は `done` か `skipped`、パネルは `done`、`failed`、`skipped` のどれかにする。
+
+- 表のセルの `text` や `keyvalue` の `value` のように、状態とは別に文字を持つものは、状態と一緒に最終の文字も書き換える。状態だけが渡され、今の文字（例:「未実装」）が最終状態と合わないときは、その文字も要る場所として扱う
+- 最終状態が渡されていない値があれば、推測で埋めない。`status` を変えずに、残っている場所（手順の名前、パネルのタイトルと項目名、今の状態）を一覧にし、最終状態が要ると返す
+- 検査に「完了（done）にするときは、未着手や途中の状態を残せません」と止められたときは、`status` を最初に読んだ値（`active` か `paused`）に戻す Edit をしてから、同じように一覧を返す。`done` のまま残さない
 
 # 中断と再開
 
