@@ -162,7 +162,7 @@ nuu は、`~/.claude` に置いたサブエージェント、フック、ルー�
 open ~/.claude/nuu/dashboards/index.html
 ```
 
-### Claude Code の中で見る（実験的）
+### Claude Code mods（実験的）
 
 ブラウザを開かなくても、Claude Code の中で進み具合を見られます。Claude Code の mod（function hooks のプラグイン）の機能を使っていて、この機能は Claude Code の early access のため、Claude Code の更新で動かなくなることがあります。Claude Code 2.1.289 の CLI で確認しています。
 
@@ -176,7 +176,7 @@ open ~/.claude/nuu/dashboards/index.html
 | キー | 操作 |
 |---|---|
 | `o` | ブラウザでダッシュボードを開く |
-| `j` / `k` | 次の作業 / 前の作業 |
+| `n` / `p` | 次の作業 / 前の作業 |
 | `a` | 今のプロジェクトと全プロジェクトを切り替える |
 | `Tab` | ボタンを移る |
 | `q` / `Esc` | 閉じる |

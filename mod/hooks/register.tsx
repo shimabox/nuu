@@ -395,10 +395,10 @@ export const register: Register = on => {
         <Box flexDirection="row" gap={1} flexWrap="wrap">
           <Button key="browser" label="ブラウザで開く" hotkey="o" variant="primary" onPress={() => openInBrowser($, d.html)} />
           {all.length > 1 && prev && (
-            <Button key="prev" label="◀ 前" hotkey="k" onPress={() => update($, selected, () => prev.path)} />
+            <Button key="prev" label="◀ 前" hotkey="p" onPress={() => update($, selected, () => prev.path)} />
           )}
           {all.length > 1 && nextOne && (
-            <Button key="next" label="次 ▶" hotkey="j" onPress={() => update($, selected, () => nextOne.path)} />
+            <Button key="next" label="次 ▶" hotkey="n" onPress={() => update($, selected, () => nextOne.path)} />
           )}
           <Text dimColor>
             {at + 1}/{all.length}
@@ -406,7 +406,7 @@ export const register: Register = on => {
           {scopeRow}
           <Button key="close" label="閉じる" hotkey="q" role="dismiss" onPress={() => $.ui.close({ id: PANE })} />
         </Box>
-        <Text dimColor>o ブラウザ・j / k 次と前・a 範囲・Tab 移動・Esc 閉じる（ペインを離れたら ctrl+x tab で戻る）</Text>
+        <Text dimColor>o ブラウザ・n / p 次と前・a 範囲・Tab 移動・Esc 閉じる（ペインを離れたら ctrl+x tab で戻る）</Text>
         <Box flexDirection="column">
           {showsAll && <Text dimColor>{d.project}</Text>}
           <Box flexDirection="row" gap={1}>
