@@ -55,7 +55,7 @@ fails() {
 # 複製したリポジトリと一時 HOME を用意する。install.sh が git を呼ばないことを確かめるため、
 # 呼ばれたら記録するだけの git を PATH の先頭に置く。
 mkdir -p "$REPO" "$TEST_HOME" "$WORK_DIR" "$FAKE_BIN"
-cp -R "$ROOT/agents" "$ROOT/client" "$ROOT/hooks" "$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/claude-instructions.md" "$REPO/"
+cp -R "$ROOT/agents" "$ROOT/client" "$ROOT/hooks" "$ROOT/mod" "$ROOT/install.sh" "$ROOT/uninstall.sh" "$ROOT/claude-instructions.md" "$REPO/"
 
 # shellcheck disable=SC2016 # 生成先のスクリプトで展開する。
 printf '%s\n' \
@@ -98,6 +98,14 @@ readonly MEMORY_DIR="$TEST_HOME/.claude/agent-memory/dashboard-builder"
 readonly DASH_DIR="$TEST_HOME/.claude/nuu/dashboards"
 readonly CLIENT_LINK="$DASH_DIR/_client"
 readonly PAGE_LINK="$TEST_HOME/.claude/hooks/dashboard-page.py"
+readonly MOD_LINK="$TEST_HOME/.claude/nuu/mod"
+readonly SETTINGS_JSON="$TEST_HOME/.claude/settings.json"
+readonly MOD_ENTRY='~/.claude/nuu/mod'
+
+# settings.json の env.CLAUDE_CODE_PLUGIN_DIRS を返す。なければ空。
+plugin_dirs() {
+  jq -r '.env.CLAUDE_CODE_PLUGIN_DIRS // ""' "$SETTINGS_JSON" 2>/dev/null || true
+}
 
 echo '== エージェント定義 =='
 
@@ -271,7 +279,8 @@ for file in agents/dashboard-builder.md agents/dashboard-updater.md; do
 done
 for file in agents/dashboard-builder.md agents/dashboard-updater.md hooks/dashboard-guard.sh hooks/dashboard-usage.py \
   hooks/dashboard-validate.py hooks/dashboard-page.py install.sh uninstall.sh claude-instructions.md \
-  client/task.html client/index.html client/nuu.js client/nuu.css; do
+  client/task.html client/index.html client/nuu.js client/nuu.css \
+  mod/.claude-plugin/plugin.json mod/hooks/hooks.json mod/hooks/register.tsx mod/types/index.d.ts mod/tests/nuu.test.tsx; do
   check "${file} に利用者固有のパスを書かない" fails grep -qE '/Users/|/home/|shimabox/github' "$REPO/$file"
 done
 
@@ -863,6 +872,8 @@ check '2 回目も git を呼ばない' test ! -s "$GIT_LOG"
 check 'CLAUDE.md にルールを読み込む 1 行を足す' grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
 check 'CLAUDE.md のほかの内容は残す' grep -qxF keep "$CLAUDE_MD"
 check '2 回目は読み込みの 1 行を重ねて足さない' test "$(grep -cxF "$IMPORT_LINE" "$CLAUDE_MD")" -eq 1
+check 'mod を ~/.claude/nuu/mod へのリンクにする' links_to "$MOD_LINK" "$REPO/mod"
+check 'settings.json がなければ作り、CLAUDE_CODE_PLUGIN_DIRS に mod のパスを足す' test "$(plugin_dirs)" = "$MOD_ENTRY"
 
 # インストールしたフックが置いたスタブから、リンク越しに固定クライアントを読める。
 place_fixture "$FIXTURES/valid/$SAMPLE" "$SAMPLE"
@@ -887,6 +898,30 @@ check '別のフォルダーの _client は上書きしない' grep -qxF mine "$
 rm -rf "$CLIENT_LINK"
 rm -rf "$DASH_DIR"
 run_install
+check '何度インストールしても mod のパスを重ねて足さない' test "$(plugin_dirs)" = "$MOD_ENTRY"
+
+printf '{"model": "opus", "env": {"CLAUDE_CODE_PLUGIN_DIRS": "/opt/other", "KEEP": "1"}}\n' >"$SETTINGS_JSON"
+check 'settings.json にほかの設定があってもインストールが成功する' run_install
+check 'ほかの mod のパスの後ろに : でつないで足す' test "$(plugin_dirs)" = "/opt/other:$MOD_ENTRY"
+check 'settings.json のほかの設定は残す' test "$(jq -r '.model + .env.KEEP' "$SETTINGS_JSON")" = opus1
+
+printf '{"env": {"CLAUDE_CODE_PLUGIN_DIRS": "%s/.claude/nuu/mod"}}\n' "$TEST_HOME" >"$SETTINGS_JSON"
+run_install
+check '展開したパスで入っていれば足さない' test "$(plugin_dirs)" = "$TEST_HOME/.claude/nuu/mod"
+
+printf '{}\n' >"$SETTINGS_JSON"
+output="$(install_output --no-mod)"
+check '--no-mod なら settings.json に触れない' test "$(cat "$SETTINGS_JSON")" = '{}'
+check '--no-mod なら足すパスを案内する' grep -qF "$MOD_ENTRY" <<<"$output"
+check '--no-mod でも mod はリンクする' links_to "$MOD_LINK" "$REPO/mod"
+
+printf 'not json\n' >"$SETTINGS_JSON"
+output="$(install_output)"
+check 'settings.json を読めなければ書き換えない' test "$(cat "$SETTINGS_JSON")" = 'not json'
+check 'settings.json を読めなければ足し方を案内する' grep -qF 'JSON として読めない' <<<"$output"
+
+printf '{"env": {"CLAUDE_CODE_PLUGIN_DIRS": "/opt/other"}}\n' >"$SETTINGS_JSON"
+run_install
 
 echo '== uninstall.sh =='
 
@@ -903,7 +938,15 @@ check 'リポジトリの client/ は残す' test -f "$REPO/client/nuu.js"
 check '空になった dashboards と ~/.claude/nuu を消す' test ! -e "$TEST_HOME/.claude/nuu"
 check 'CLAUDE.md の読み込みの 1 行を外す' fails grep -qxF "$IMPORT_LINE" "$CLAUDE_MD"
 check 'CLAUDE.md のほかの内容は残す（アンインストール）' grep -qxF keep "$CLAUDE_MD"
+check 'mod のリンクを外す' test ! -e "$MOD_LINK"
+check 'リポジトリの mod/ は残す' test -f "$REPO/mod/hooks/register.tsx"
+check 'CLAUDE_CODE_PLUGIN_DIRS から mod のパスだけを外す' test "$(plugin_dirs)" = /opt/other
 check 'リンクがなくても成功する' run_uninstall
+
+printf '{"model": "opus"}\n' >"$SETTINGS_JSON"
+run_install
+run_uninstall
+check 'mod のパスだけだったら env ごと消し、ほかの設定は残す' test "$(jq -c . "$SETTINGS_JSON")" = '{"model":"opus"}'
 
 run_install
 mkdir -p "$DASH_DIR/project"
@@ -983,6 +1026,16 @@ status=$?
 set -e
 check 'インストールでも知らない引数は終了コード 2 で止まる' test "$status" -eq 2
 check '知らない引数では何もリンクしない' test ! -e "$AGENT_LINK"
+
+echo '== Claude Code の mod =='
+
+# mod は claude の検査とテストの仕組みで確かめる。claude がない環境（CI など）では飛ばす。
+if command -v claude >/dev/null 2>&1; then
+  check 'claude plugin validate が通る' claude plugin validate "$ROOT/mod"
+  check 'claude plugin test が通る' claude plugin test "$ROOT/mod"
+else
+  printf 'SKIP  claude がないので mod の検査とテストを飛ばします\n'
+fi
 
 echo '== README と説明ページ =='
 

@@ -458,7 +458,7 @@ footer { max-width: 1000px; margin: 0 auto; padding-top: 40px; border-top: 1px s
     <div class="steps">
       <div class="step">
         <h3>clone して、リンクを張る</h3>
-        <p><code>~/.claude</code> にサブエージェント、フック、ページの見た目と動き（<code>client/</code>）のリンクを作ります。git やネットワークは使いません。既存のファイルがあれば、上書きせずに止まります。</p>
+        <p><code>~/.claude</code> にサブエージェント、フック、ページの見た目と動き（<code>client/</code>）、Claude Code の中で見せる mod（<code>mod/</code>）のリンクを作ります。mod は <code>~/.claude/settings.json</code> の <code>CLAUDE_CODE_PLUGIN_DIRS</code> に足し、<code>/nuu</code> で開けるようにします。git やネットワークは使いません。既存のファイルがあれば、上書きせずに止まります。</p>
         <pre><code>git clone https://github.com/shimabox/nuu.git
 cd nuu
 ./install.sh</code></pre>
@@ -472,6 +472,12 @@ cd nuu
         <h3>長い作業を頼んで、一覧を開く</h3>
         <p>初回だけ好みを聞かれます。できたダッシュボードは、一覧からたどれます。</p>
         <pre><code>open ~/.claude/nuu/dashboards/index.html</code></pre>
+      </div>
+      <div class="step">
+        <h3>Claude Code の中でも見る（実験的）</h3>
+        <p><code>/nuu</code> で今のプロジェクトの作業を、<code>/nuu all</code> で全プロジェクトの作業をペインに出します。開いた直後は、<code>o</code> でブラウザで開く、<code>j</code> / <code>k</code> で次と前の作業、<code>a</code> で範囲の切り替え、<code>q</code> か <code>Esc</code> で閉じます。プロンプトに戻ったあとは、<code>ctrl+x</code> のあと <code>tab</code> でペインに戻ります。<code>/tui fullscreen</code> で全画面にすると、クリックでも操作できます。Claude Code の early access の機能を使うので、更新で動かなくなることがあります。<code>settings.json</code> を書き換えたくないときは <code>./install.sh --no-mod</code> を使います。<code>uninstall.sh</code> は、足した mod のパスだけを外します。</p>
+        <pre><code>/nuu
+/nuu all</code></pre>
       </div>
     </div>
     <div class="cta">
