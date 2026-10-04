@@ -69,6 +69,7 @@ https://shimabox.github.io/nuu/
 - 作業したセッションの ID と、`claude --resume` で再開するコマンドを表示する。一覧で止まっている作業を見つけたら、コマンドをコピーしてその会話に戻れる
 - 作業中に判断が必要になっても止まらず、質問と既定の対応をダッシュボードに載せて作業を続ける
 - ダッシュボードを作るエージェントのモデルを、頼めば変えられる。既定はパネルを組み立てる builder が `opus`、途中の更新をする updater が `sonnet`
+- Claude Code の中でも見られる（実験的）。`/nuu` で今のプロジェクトの作業をペインに出し、進行中の作業があるあいだはプロンプトの上に 1 行の帯を出す。新しい質問はトーストで知らせる
 
 ダッシュボードとエージェントへの指示は日本語です。
 
@@ -109,6 +110,7 @@ nuu は、`~/.claude` に置いたサブエージェント、フック、ルー�
    - `~/.claude/hooks/dashboard-usage.py`
    - `~/.claude/nuu/claude-instructions.md`
    - `~/.claude/nuu/dashboards/_client`（リポジトリの `client/` へのリンク）
+   - `~/.claude/nuu/mod`（リポジトリの `mod/` へのリンク）
 
 2. `install.sh` は、`~/.claude/CLAUDE.md` の末尾に次の 1 行を足します。長い作業で `dashboard-builder` を使うよう Claude Code に指示するルール（`claude-instructions.md`）を読み込む行です。ルールの本文はコピーしないので、リポジトリを更新すればルールも最新になります。
 
@@ -117,6 +119,14 @@ nuu は、`~/.claude` に置いたサブエージェント、フック、ルー�
    ```
 
    `CLAUDE.md` を書き換えたくないときは、`./install.sh --no-claude-md` を実行し、上の 1 行を自分で足します。以前の手順でルールの本文を追記している場合は、`install.sh` は 1 行を足さずに知らせるので、その節を消して 1 行に置き換えてください。
+
+3. `install.sh` は、`~/.claude/settings.json` の `env.CLAUDE_CODE_PLUGIN_DIRS` に `~/.claude/nuu/mod` を足します。Claude Code の起動時に mod を読み込ませ、`/nuu` を使えるようにするためです。ほかのパスがすでにあれば残し、`:` でつなぎます。
+
+   ```json
+   { "env": { "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/nuu/mod" } }
+   ```
+
+   `settings.json` を書き換えたくないときは、`./install.sh --no-mod` を実行し、上の値を自分で足します。足したあとに起動したセッションから使えます。
 
 リポジトリを `git pull` で更新すると、エージェントの定義、フック、ルール、ページの見た目と動きが、すべてリンク越しに新しくなります。開いたままのページは今の動きのままで、開き直すか再読み込みしたときに新しくなります。
 
@@ -151,6 +161,29 @@ nuu は、`~/.claude` に置いたサブエージェント、フック、ルー�
 ```sh
 open ~/.claude/nuu/dashboards/index.html
 ```
+
+### Claude Code の中で見る（実験的）
+
+ブラウザを開かなくても、Claude Code の中で進み具合を見られます。Claude Code の mod（function hooks のプラグイン）の機能を使っていて、この機能は Claude Code の early access のため、Claude Code の更新で動かなくなることがあります。Claude Code 2.1.289 の CLI で確認しています。
+
+- `/nuu`: 今のプロジェクトの作業をペインに出します。作業ディレクトリが同じか、プロジェクト名がリポジトリの名前と同じ作業を、進行中を先にして並べます。worktree でも元のリポジトリの名前で見つけます
+- `/nuu all`: 全プロジェクトの作業を出します
+- 帯: 進行中の作業があるあいだ、プロンプトの上に作業名、進み具合、未回答の質問の数を 1 行で出します。「詳細」でペインを開き、「隠す」で消します
+- 新しい質問が載ると、トーストで知らせます
+
+ペインには、状態、要約、進み具合、未回答の質問と既定の対応、止まっているもの、手順、GitHub / GitLab の項目を出します。ペインを開いた直後は、次のキーで操作できます。
+
+| キー | 操作 |
+|---|---|
+| `o` | ブラウザでダッシュボードを開く |
+| `j` / `k` | 次の作業 / 前の作業 |
+| `a` | 今のプロジェクトと全プロジェクトを切り替える |
+| `Tab` | ボタンを移る |
+| `q` / `Esc` | 閉じる |
+
+プロンプトに戻ったあとは、`ctrl+x` のあと `tab` でペインに戻ります。`/tui fullscreen` で全画面の表示にすると、ペインは会話の横に並び、クリックでも操作できます。
+
+ペインは `.data.js` を 10 秒ごとに読み直すだけで、ダッシュボードには何も書きません。
 
 ### エージェントの分担
 
@@ -253,6 +286,7 @@ Claude Code に「ダッシュボードの builder を sonnet にして」のよ
 
 - `agents/dashboard-builder.md`: ダッシュボードを用意するサブエージェントの定義
 - `agents/dashboard-updater.md`: 途中の更新と完了を行うサブエージェントの定義
+- `mod/`: Claude Code の中で見せる mod（`/nuu` のペインとプロンプトの上の帯）。`~/.claude/nuu/mod` からリンクで読む
 - `client/`: ページの見た目と動き（`task.html`、`index.html`、`nuu.css`、`nuu.js`）。`~/.claude/nuu/dashboards/_client` からリンクで読む
 - `hooks/dashboard-validate.py`: データを書いた直後に、決まった形か（必須の項目、状態の語彙、時刻、パネルの形、件数と長さの上限など）を確かめ、壊れていれば理由を返して直させるスクリプト
 - `hooks/dashboard-page.py`: 作業のデータを書いた直後に、作業ごとの `.html` と一覧の `index.html` を置き、すべての作業のデータから一覧のデータを作り直すスクリプト
@@ -291,6 +325,7 @@ Claude Code に「ダッシュボードの builder を sonnet にして」のよ
 - 外部へ公開するときは、`dashboards/` の中の `_client` がリポジトリの `client/` へのリンクであることに注意してください。公開先でリンクをたどれないと、ページが表示されません
 - 作業ディレクトリの名前が `_client` のときは、ページの置き場所と重ならないよう、プロジェクト名を `_client-project` にします
 - `install.sh` は `~/.claude/CLAUDE.md` に 1 行を書き込みます。`CLAUDE.md` をシンボリックリンクで管理している場合（dotfiles など）は、リンク先の実体に書き込みます。書き換えたくないときは `--no-claude-md` を付けて実行してください。`uninstall.sh` は、その 1 行だけを消します
+- `install.sh` は `~/.claude/settings.json` の `env.CLAUDE_CODE_PLUGIN_DIRS` に mod のパスを足します。シンボリックリンクの場合はリンク先の実体に書き込みます。書き換えたくないときは `--no-mod` を付けて実行してください。`uninstall.sh` は、そのパスだけを外します
 
 ## アンインストール
 
@@ -303,6 +338,8 @@ Claude Code に「ダッシュボードの builder を sonnet にして」のよ
 
 `~/.claude/CLAUDE.md` からは、`install.sh` が足した読み込みの 1 行だけを消します。ほかの内容には触れません。以前の手順でルールの本文を追記している場合は、自動では消さないので、不要なら手で消してください。
 
+`~/.claude/settings.json` からは、`env.CLAUDE_CODE_PLUGIN_DIRS` の mod のパスだけを外します。ほかのパスと設定は残します。
+
 ## テスト
 
 ```sh
@@ -310,6 +347,8 @@ tests/run.sh
 ```
 
 エージェント定義、ガード、データの確認、ページと一覧のフック、トークン量の集計、`install.sh`、`uninstall.sh` が仕様どおりかを確かめます。一時ディレクトリにリポジトリを複製し、一時 HOME で実行するので、実際の `~/.claude` やネットワークには触れません。
+
+`claude` コマンドがあれば、mod も `claude plugin validate` と `claude plugin test` で確かめます。mod のテスト（`mod/tests/`）は、ファイルの読み込みを架空のデータに置き換え、terminal とデスクトップの両方の描き方でペインと帯を確かめます。`claude` がない環境では飛ばします。
 
 ページの表示と動きは、Playwright でブラウザを動かして確かめます。Node と npm が要ります（使うだけなら要りません）。
 

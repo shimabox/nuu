@@ -1,0 +1,9 @@
+{
+  "name": "nuu",
+  "version": "0.1.0",
+  "description": "nuu の進捗ダッシュボードを、Claude Code の中のペインとプロンプトの上の帯で見せる",
+  "author": {
+    "name": "shimabox"
+  },
+  "types": "./types/index.d.ts"
+}
