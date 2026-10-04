@@ -1,6 +1,6 @@
 // fixtures の架空の作業から画面の画像を撮る。通常のテストでは飛ばす。
 // - 好みの組み合わせごとの確認用: NUU_SHOTS_DIR=/tmp/shots npx playwright test screenshots --project=chromium
-// - README と説明ページの画像（docs/images/ の 5 枚）: NUU_DOCS_IMAGES=1 npx playwright test screenshots --project=chromium
+// - README、説明ページ、docs/usage.md の画像（docs/images/ の 5 枚）: NUU_DOCS_IMAGES=1 npx playwright test screenshots --project=chromium
 const path = require('path');
 const fs = require('fs');
 const { test, expect } = require('@playwright/test');

@@ -1062,8 +1062,14 @@ width, height = size("dashboard-desktop.png")
 mobile_width, mobile_height = size("dashboard-mobile.png")
 sys.exit(0 if width == 1280 and 1100 <= height <= 1400 and mobile_width == 390 and 1000 <= mobile_height <= 1200 else 1)
 PY
-for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png dashboard-session.png dashboard-usage.png; do
+for image in dashboard-desktop.png dashboard-mobile.png index-desktop.png; do
   check "README に ${image} を載せる" grep -qF "docs/images/${image}" "$ROOT/README.md"
+done
+for image in dashboard-session.png dashboard-usage.png; do
+  check "使い方の文書に ${image} を載せる" grep -qF "images/${image}" "$ROOT/docs/usage.md"
+done
+for doc in setup usage architecture; do
+  check "README から docs/${doc}.md へリンクする" grep -qF "(docs/${doc}.md)" "$ROOT/README.md"
 done
 for file in README.md docs/index.html; do
   check "${file} に取得しなくなった impeccable を書かない" fails grep -qi impeccable "$ROOT/$file"
