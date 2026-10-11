@@ -263,6 +263,9 @@ check 'updater に panel の state の語彙を示す' updater_says '`state` は
 check 'updater は完了のときに未着手や途中の状態を残さない' updater_says '完了にするときは、手順とパネルの状態に `todo`、`doing`、`waiting`、`blocked` を残さない'
 check 'updater は最終状態を推測で埋めず、場所の一覧を返す' updater_says '最終状態が渡されていない値があれば、推測で埋めない。`status` を変えずに、残っている場所'
 check 'updater は検査に止められたら status を戻してから一覧を返す' updater_says '`status` を最初に読んだ値（`active` か `paused`）に戻す Edit をしてから、同じように一覧を返す。`done` のまま残さない'
+check 'updater は完了のとき status を done にする Edit を最後に 1 回出す' updater_says '`status` を `done` にする Edit を最後に 1 回出す'
+check 'updater は完了のとき status の Edit をほかの Edit と同時に出さない' updater_says 'ほかの Edit と同時に出さない'
+check 'updater は関係のない案内に返事で触れない' updater_says '作業と関係のない案内（MCP サーバーの説明など）が途中で届いても、返事に書かない'
 check 'builder と updater の手順の status の語彙が同じ' body_has '手順の `status` は `todo | doing | waiting | blocked | done | skipped`。`skipped`（見送り）は、やらないと決めた手順に使い、理由を `note` に書く'
 check 'builder と updater のパネルの中身の表が同じ' python3 - "$agent" "$updater" <<'PY'
 import re, sys
