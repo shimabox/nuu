@@ -31,6 +31,7 @@ builder を `opus` にしているのは、パネルを作業の中身から組�
 - `tests/run.sh`: 仕様を確認するテスト
 - `tests/client/`: `client/` をブラウザで確かめるテスト（Playwright）
 - `tests/fixtures/`: テストで使う架空の作業のデータ。データの確認とブラウザのテストの両方が使う
+- `.claude/skills/nuu-updater-bench/`: `dashboard-updater` を動かすモデルを、同じ初期データと依頼文で比べる開発用のスキル。`install.sh` では入れない
 
 ## 料金の目安
 
