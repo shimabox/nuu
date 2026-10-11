@@ -141,5 +141,6 @@ Claude Code に「ダッシュボードの builder を sonnet にして」のよ
 
 - 名前は `dashboard-builder` と `dashboard-updater`、値は `sonnet`、`opus`、`haiku`、`fable` のどれかです
 - 名前がないエージェントは、定義の既定（builder は `opus`、updater は `sonnet`）を使います。「builder のモデルを既定に戻して」と頼むと、その名前を消します
+- updater を `haiku` にすると、料金は約 15 分の 1 になります。正しさは変わらず、返事が長めになります（[比べた結果](architecture.md#updater-を-sonnet-にしている理由)）
 - effort は定義の `low` のままです
 - ファイルを手で書き換えることもできます。手で書き換えた指定は、次のセッションから使われます。Claude Code はモデルの指定をセッションの初めに 1 回だけ読むためです。作業中のセッションに反映したいときは、Claude Code に頼みます
