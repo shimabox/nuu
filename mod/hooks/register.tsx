@@ -192,7 +192,7 @@ async function locate($: EngineInterface): Promise<Where | null> {
   return { root: `${home}/.claude/nuu/dashboards`, cwd, names: [...new Set(names.filter(Boolean))] }
 }
 
-async function scan(
+export async function scan(
   $: EngineInterface,
   where: Where,
   cache: Map<string, Cached>,
