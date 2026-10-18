@@ -23,6 +23,7 @@ export type NuuDashboard = {
   title: string
   summary: string
   cwd: string
+  sessionId: string
   status: string
   updatedAt: number
   tasks: NuuTask[]
@@ -40,6 +41,8 @@ declare module 'claude-code' {
       accent: string
       everything: NuuDashboard[]
       isAll: boolean
+      showsHidden: boolean
+      pendingOwn: boolean
     }
   }
 }
