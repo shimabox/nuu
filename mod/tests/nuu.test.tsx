@@ -63,6 +63,7 @@ test('作業ディレクトリの包含かプロジェクト名で今のプロ�
 test('/nuu で今のプロジェクトの作業だけをペインと帯に出す', async ($, on) => {
   mock.env(on, { HOME: '/u/me' })
   on('session.cwd', () => ({ value: CWD }))
+  on('session.id', () => ({ value: 'session-plain' }))
   on('process.run', () => ({ deny: 'git はこのテストでは使わない' }))
   on('fs.list', (_$, e) => ({
     value: (DIRS[e.path] ?? []).map(x => ({ ...x, size: 1, mtimeMs: 1, isLink: false })),
@@ -115,7 +116,7 @@ test('/nuu で今のプロジェクトの作業だけをペインと帯に出す
     origin: { kind: 'composer' },
     presentation: { isFullscreen: true, columns: 160 },
   })
-  expect(all.text).toContain('全プロジェクトの作業 2 件')
+  expect(all.text).toContain('全プロジェクトの進行中の作業 2 件')
   const pane = await $.ui.mount({
     plugin: 'nuu',
     surface: 'terminal',
@@ -166,6 +167,7 @@ test('作業ディレクトリは .usage.js から取り、_client だけを除�
     return <Text>engine</Text>
   })
   on('session.cwd', () => ({ value: CWD }))
+  on('session.id', () => ({ value: 'session-plain' }))
   on('process.run', () => ({ deny: 'git はこのテストでは使わない' }))
   on('fs.list', (_$, e) => ({
     value: (DIRS2[e.path] ?? []).map(x => ({ ...x, size: 1, isLink: false })),
@@ -186,9 +188,9 @@ test('作業ディレクトリは .usage.js から取り、_client だけを除�
     })
 
   // プロジェクト名がフォルダー名と違っても、.usage.js の作業ディレクトリで今のプロジェクトの作業になる
-  expect((await run('')).text).toContain('このプロジェクトの作業 1 件')
+  expect((await run('')).text).toContain('このプロジェクトに進行中の作業はありません（完了・中断中 1 件')
   // _tools は出し、_client は作業として読まない
-  expect((await run('all')).text).toContain('全プロジェクトの作業 2 件')
+  expect((await run('all')).text).toContain('全プロジェクトの進行中の作業 1 件、完了・中断中 1 件')
   const pane = await $.ui.mount({
     plugin: 'nuu',
     surface: 'terminal',
@@ -196,8 +198,10 @@ test('作業ディレクトリは .usage.js から取り、_client だけを除�
     requestId: 'nuu',
     props: { title: 'nuu', isFocused: false, bodyColumns: 80, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} },
   })
-  // 進行中の _tools の作業が先頭に開き、中断中の作業はほかの作業に並ぶ
+  // 進行中の _tools の作業が先頭に開き、中断中の作業は h を押すとほかの作業に並ぶ
   expect(await pane.find({ type: 'Text', text: '道具の作業' })).toBeDefined()
+  expect(await pane.find({ key: 'pick-shop-renamed-paused-work' })).toBeUndefined()
+  await pane.press({ key: 'hidden' })
   expect(await pane.find({ key: 'pick-shop-renamed-paused-work' })).toBeDefined()
   expect(await pane.find({ type: 'Text', text: 'クライアントのフォルダー' })).toBeUndefined()
   await pane.unmount()

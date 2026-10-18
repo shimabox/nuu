@@ -13,6 +13,8 @@ const isBandHidden = atom({ plugin: 'nuu', key: 'isBandHidden' } as const, false
 const accent = atom({ plugin: 'nuu', key: 'accent' } as const, DEFAULT_ACCENT)
 const everything = atom({ plugin: 'nuu', key: 'everything' } as const, [])
 const isAll = atom({ plugin: 'nuu', key: 'isAll' } as const, false)
+const showsHidden = atom({ plugin: 'nuu', key: 'showsHidden' } as const, false)
+const pendingOwn = atom({ plugin: 'nuu', key: 'pendingOwn' } as const, false)
 
 const TASK_ORDER = ['doing', 'waiting', 'blocked', 'todo', 'done', 'skipped']
 const TASK_MARK: Record<string, string> = {
@@ -27,6 +29,11 @@ const STATUS_LABEL: Record<string, string> = {
   active: '進行中',
   paused: '中断中',
   done: '完了',
+}
+const OTHER_MARK: Record<string, string> = {
+  active: '▶',
+  paused: '‖',
+  done: '✓',
 }
 const REVIEW_LABEL: Record<string, string> = {
   pr: 'PR',
@@ -149,6 +156,23 @@ export function sortDashboards(all: NuuDashboard[]): NuuDashboard[] {
   return [...all].sort((a, b) => rank(a) - rank(b) || b.updatedAt - a.updatedAt)
 }
 
+export const isMine = (d: NuuDashboard, myId: string): boolean =>
+  myId !== '' && d.sessionId !== '' && d.sessionId === myId
+
+/** このセッションの進行中の作業のうち、更新の一番新しいもの。並びは sortDashboards 済みとする */
+export const ownOf = (all: NuuDashboard[], myId: string): NuuDashboard | undefined =>
+  all.find(d => d.status === 'active' && isMine(d, myId))
+
+export const visibleOf = (pool: NuuDashboard[], showsHidden: boolean): NuuDashboard[] =>
+  showsHidden ? pool : pool.filter(d => d.status === 'active')
+
+/** 選んだ作業が隠れていれば、自分の作業、なければ先頭に落とす。選んだ作業は書き換えない */
+export const choose = (
+  visible: NuuDashboard[],
+  want: string | null,
+  own: NuuDashboard | undefined,
+): NuuDashboard | undefined => visible.find(d => d.path === want) ?? own ?? visible[0]
+
 const basename = (p: string) => p.replace(/\/+$/, '').split('/').pop() ?? ''
 
 async function locate($: EngineInterface): Promise<Where | null> {
@@ -232,8 +256,52 @@ const usages = new Map<string, CachedUsage>()
 // 質問が増えたときだけ知らせるため、前回見た未回答の質問を覚えておく。最初の読み込みでは知らせない
 let seen: Set<string> | null = null
 let place: Where | null = null
+// 自分の作業は .usage.js を最後に書いたセッションで見分ける。サブエージェントが書いても親の ID が残る
+let mySessionId = ''
+// 自分の作業の更新だけを知らせるため、前回見た updatedAt を覚えておく。最初の読み込みでは知らせない
+let ownAt: Map<string, number> | null = null
+
+/** ペインが今出している作業。描画と更新の検知で同じ選び方をする */
+async function viewing($: EngineInterface) {
+  const pool = (await read($, isAll)) ? await read($, everything) : await read($, dashboards)
+  const visible = visibleOf(pool, await read($, showsHidden))
+  const own = ownOf(visible, mySessionId)
+  return { visible, own, d: choose(visible, await read($, selected), own) }
+}
+
+async function clearPending($: EngineInterface) {
+  if (await read($, pendingOwn)) await update($, pendingOwn, () => false)
+}
+
+async function select($: EngineInterface, path: string | null) {
+  await update($, selected, () => path)
+  if (path !== null && ownOf(await read($, everything), mySessionId)?.path === path) await clearPending($)
+}
+
+async function watchOwn($: EngineInterface, every: NuuDashboard[]) {
+  const own = ownOf(every, mySessionId)
+  const before = ownAt
+  ownAt = new Map(every.filter(d => d.status === 'active' && isMine(d, mySessionId)).map(d => [d.path, d.updatedAt]))
+  const { d } = await viewing($)
+  if (own === undefined || d?.path === own.path) return clearPending($)
+  if (before === null) return
+  const last = before.get(own.path)
+  if (last !== undefined && last >= own.updatedAt) return
+  if (await read($, pendingOwn)) return
+  // ペインが閉じていれば帯が自分の作業を出しているので知らせない
+  if (!(await $.ui.panes()).some(p => p.id === PANE)) return
+  $.ui.toast(`nuu: 自分の作業「${own.title}」が更新されました（ペインの b で戻る）`, { timeoutMs: 8000 })
+  await update($, pendingOwn, () => true)
+}
 
 async function refresh($: EngineInterface, where: Where) {
+  // /clear ではセッションの ID が変わり、session.start は起きないので、読み込みのたびに取り直す
+  const id = await $.session.id().catch(() => '')
+  if (id !== mySessionId) {
+    mySessionId = id
+    ownAt = null
+    await clearPending($)
+  }
   const { mine: found, every } = await scan($, where, cache, usages)
   const now = new Set(found.flatMap(d => openQuestions(d).map(q => `${d.path}#${q.id}`)))
   if (seen !== null) {
@@ -245,6 +313,7 @@ async function refresh($: EngineInterface, where: Where) {
   await update($, everything, () => every)
   const color = await readAccent($, where)
   await update($, accent, () => color)
+  await watchOwn($, every)
 }
 
 // すでに開いているペインに open を重ねても題名が変わるだけでキー入力は移らないので、閉じてから開き直す
@@ -281,11 +350,16 @@ export const register: Register = on => {
 
   on('command.run', { command: 'nuu' }, async ($, e) => {
     const wantsAll = e.args.trim() === 'all'
+    // 開くたびに進行中の作業だけにし、自分の作業から出す
     await update($, isBandHidden, () => false)
+    await update($, showsHidden, () => false)
+    await update($, selected, () => null)
     await update($, isAll, () => wantsAll)
     place = place ?? (await locate($))
     if (place) await refresh($, place)
     const all = wantsAll ? await read($, everything) : await read($, dashboards)
+    const active = all.filter(d => d.status === 'active').length
+    const hidden = all.length - active
     await openFocused($)
     $.clock.after(300, () => void retryFocus($).catch(() => undefined))
     const scope = wantsAll ? '全プロジェクト' : 'このプロジェクト'
@@ -294,14 +368,17 @@ export const register: Register = on => {
       text:
         all.length === 0
           ? `${scope}の nuu ダッシュボードはまだありません。`
-          : `nuu のペインを開きました（${scope}の作業 ${all.length} 件）。`,
+          : active === 0
+            ? `${scope}に進行中の作業はありません（完了・中断中 ${hidden} 件は h で見られます）。`
+            : `nuu のペインを開きました（${scope}の進行中の作業 ${active} 件${hidden > 0 ? `、完了・中断中 ${hidden} 件` : ''}）。`,
     }
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const all = await read($, dashboards)
     const active = all.filter(d => d.status === 'active')
-    const first = active[0]
+    // 別のセッションの作業が新しく更新されても、このセッションの作業を出し続ける
+    const first = ownOf(active, mySessionId) ?? active[0]
     if (e.props.hasSurvey || first === undefined || (await read($, isBandHidden))) return next(e)
 
     const { Box, Text, Button } = $.ui.resolve(e)
@@ -331,7 +408,7 @@ export const register: Register = on => {
           key="open"
           label="詳細"
           onPress={async () => {
-            await update($, selected, () => first.path)
+            await select($, first.path)
             await openFocused($)
           }}
         />
@@ -343,10 +420,12 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button, Link } = $.ui.resolve(e)
     const showsAll = await read($, isAll)
-    const all = showsAll ? await read($, everything) : await read($, dashboards)
+    const pool = showsAll ? await read($, everything) : await read($, dashboards)
+    const hides = !(await read($, showsHidden))
     const color = await read($, accent)
-    const want = await read($, selected)
-    const d = all.find(x => x.path === want) ?? all[0]
+    const { visible: all, own, d } = await viewing($)
+    const isPending = (await read($, pendingOwn)) && own !== undefined && d?.path !== own.path
+    const hiddenCount = pool.filter(x => x.status !== 'active').length
     const width = Math.max(20, e.props.bodyColumns)
 
     const scopeRow = (
@@ -359,19 +438,36 @@ export const register: Register = on => {
           dimColor
           label={showsAll ? '→ このプロジェクトだけ' : '→ 全プロジェクト'}
           onPress={async () => {
-            await update($, selected, () => null)
+            await select($, null)
             await update($, isAll, () => !showsAll)
           }}
         />
       </Box>
+    )
+    const hiddenButton = hiddenCount > 0 && (
+      <Button
+        key="hidden"
+        hotkey="h"
+        plain
+        dimColor
+        label={hides ? `完了・中断中も見る (${hiddenCount})` : '進行中だけ'}
+        onPress={() => update($, showsHidden, () => hides)}
+      />
+    )
+    const ownButton = own !== undefined && d?.path !== own.path && (
+      <Button key="own" label="自分の作業へ" hotkey="b" onPress={() => select($, own.path)} />
     )
 
     if (d === undefined) {
       return (
         <Box flexDirection="column">
           {scopeRow}
-          <Text dimColor>{showsAll ? '全プロジェクト' : 'このプロジェクト'}の nuu ダッシュボードはまだありません。</Text>
-          <Text dimColor>長い作業を始めると、ここに進み具合が出ます。</Text>
+          {pool.length === 0 ? (
+            <Text dimColor>{showsAll ? '全プロジェクト' : 'このプロジェクト'}の nuu ダッシュボードはまだありません。</Text>
+          ) : (
+            <Text dimColor>進行中の作業はありません。完了・中断中 {hiddenCount} 件は h で見られます。</Text>
+          )}
+          {pool.length === 0 ? <Text dimColor>長い作業を始めると、ここに進み具合が出ます。</Text> : hiddenButton}
         </Box>
       )
     }
@@ -395,19 +491,29 @@ export const register: Register = on => {
       <Box flexDirection="column" gap={1}>
         <Box flexDirection="row" gap={1} flexWrap="wrap">
           <Button key="browser" label="ブラウザで開く" hotkey="o" variant="primary" onPress={() => openInBrowser($, d.html)} />
-          {all.length > 1 && prev && (
-            <Button key="prev" label="◀ 前" hotkey="p" onPress={() => update($, selected, () => prev.path)} />
-          )}
+          {all.length > 1 && prev && <Button key="prev" label="◀ 前" hotkey="p" onPress={() => select($, prev.path)} />}
           {all.length > 1 && nextOne && (
-            <Button key="next" label="次 ▶" hotkey="n" onPress={() => update($, selected, () => nextOne.path)} />
+            <Button key="next" label="次 ▶" hotkey="n" onPress={() => select($, nextOne.path)} />
           )}
           <Text dimColor>
             {at + 1}/{all.length}
           </Text>
+          {!isPending && ownButton}
+          {hiddenButton}
           {scopeRow}
           <Button key="close" label="閉じる" hotkey="q" role="dismiss" onPress={() => $.ui.close({ id: PANE })} />
         </Box>
-        <Text dimColor>o ブラウザ・n / p 次と前・a 範囲・Tab 移動・Esc 閉じる（ペインを離れたら ctrl+x tab で戻る）</Text>
+        {isPending && own && (
+          <Box flexDirection="row" gap={1}>
+            <Text color="yellow" wrap="truncate-end">
+              自分の作業「{own.title}」が更新されました
+            </Text>
+            {ownButton}
+          </Box>
+        )}
+        <Text dimColor>
+          o ブラウザ・n / p 次と前・h 完了・中断中・b 自分の作業・a 範囲・Tab 移動・Esc 閉じる（ペインを離れたら ctrl+x tab で戻る）
+        </Text>
         <Box flexDirection="column">
           {showsAll && <Text dimColor>{d.project}</Text>}
           <Box flexDirection="row" gap={1}>
@@ -505,9 +611,9 @@ export const register: Register = on => {
                 <Button
                   key={`pick-${o.project}-${o.slug}`}
                   plain
-                  dimColor={o.status === 'done'}
-                  label={`${o.status === 'done' ? '✓' : '▶'} ${showsAll ? `[${o.project}] ` : ''}${o.title}  ${p.done}/${p.total}`}
-                  onPress={() => update($, selected, () => o.path)}
+                  dimColor={o.status !== 'active'}
+                  label={`${OTHER_MARK[o.status] ?? '‖'} ${showsAll ? `[${o.project}] ` : ''}${o.title}  ${p.done}/${p.total}`}
+                  onPress={() => select($, o.path)}
                 />
               )
             })}
