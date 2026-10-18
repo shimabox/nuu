@@ -38,7 +38,7 @@ const REVIEW_LABEL: Record<string, string> = {
 
 type Where = { root: string; cwd: string; names: string[] }
 type Cached = { mtimeMs: number; dashboard: NuuDashboard | null }
-type CachedCwd = { mtimeMs: number; cwd: string }
+type CachedUsage = { mtimeMs: number; cwd: string; sessionId: string }
 
 // 固定クライアントの置き場所。プロジェクト名が _client の作業は builder が _client-project にする
 const CLIENT_DIR = '_client'
@@ -109,6 +109,7 @@ export function toDashboard(raw: unknown, path: string): NuuDashboard | null {
     title: str(d.title) || str(d.slug),
     summary: str(d.summary),
     cwd: str(d.cwd),
+    sessionId: '',
     status: str(d.status) || 'active',
     updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : 0,
     tasks,
@@ -171,7 +172,7 @@ async function scan(
   $: EngineInterface,
   where: Where,
   cache: Map<string, Cached>,
-  cwds: Map<string, CachedCwd>,
+  usages: Map<string, CachedUsage>,
 ) {
   const projects = await $.fs.list(where.root).catch(() => [])
   const mine: NuuDashboard[] = []
@@ -190,19 +191,19 @@ async function scan(
         cache.set(path, hit)
       }
       if (!hit.dashboard) continue
-      // 作業ディレクトリは .data.js ではなく、同名の .usage.js に記録される
+      // 作業ディレクトリとセッションの ID は .data.js ではなく、同名の .usage.js に記録される
       let dashboard = hit.dashboard
       const usageName = file.name.replace(/\.data\.js$/, '.usage.js')
       const usageAt = stamps.get(usageName)
-      if (dashboard.cwd === '' && usageAt !== undefined) {
+      if (usageAt !== undefined) {
         const usagePath = `${where.root}/${dir.name}/${usageName}`
-        let known = cwds.get(usagePath)
+        let known = usages.get(usagePath)
         if (!known || known.mtimeMs !== usageAt) {
-          const usage = parseUsageJs(await $.fs.read(usagePath).catch(() => '')) as { cwd?: unknown } | null
-          known = { mtimeMs: usageAt, cwd: typeof usage?.cwd === 'string' ? usage.cwd : '' }
-          cwds.set(usagePath, known)
+          const usage = parseUsageJs(await $.fs.read(usagePath).catch(() => '')) as Record<string, unknown> | null
+          known = { mtimeMs: usageAt, cwd: str(usage?.cwd), sessionId: str(usage?.sessionId) }
+          usages.set(usagePath, known)
         }
-        if (known.cwd !== '') dashboard = { ...dashboard, cwd: known.cwd }
+        dashboard = { ...dashboard, cwd: dashboard.cwd === '' ? known.cwd : dashboard.cwd, sessionId: known.sessionId }
       }
       every.push(dashboard)
       if (belongs(dashboard, where.cwd, where.names)) mine.push(dashboard)
@@ -227,13 +228,13 @@ async function openInBrowser($: EngineInterface, path: string) {
 }
 
 const cache = new Map<string, Cached>()
-const cwds = new Map<string, CachedCwd>()
+const usages = new Map<string, CachedUsage>()
 // 質問が増えたときだけ知らせるため、前回見た未回答の質問を覚えておく。最初の読み込みでは知らせない
 let seen: Set<string> | null = null
 let place: Where | null = null
 
 async function refresh($: EngineInterface, where: Where) {
-  const { mine: found, every } = await scan($, where, cache, cwds)
+  const { mine: found, every } = await scan($, where, cache, usages)
   const now = new Set(found.flatMap(d => openQuestions(d).map(q => `${d.path}#${q.id}`)))
   if (seen !== null) {
     const fresh = found.flatMap(d => openQuestions(d).filter(q => !seen?.has(`${d.path}#${q.id}`)))
