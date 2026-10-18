@@ -319,6 +319,7 @@ check '途中の更新と完了は updater に任せる' rules_have '途中の�
 check '構成の見直しが必要なら builder に回す' rules_have '「構成の見直しが必要です」と返したら、同じパスと変化を `dashboard-builder` に渡して'
 check '質問の追加は updater で行う' rules_have '`dashboard-updater` 経由で質問一覧に追加し'
 check '完了の更新は updater で行う' rules_have '作業が終わったら、`dashboard-updater` で完了状態に更新し'
+check '待ちにした手順は片付いたら元のダッシュボードで閉じる' rules_have 'その手順があとで片付いた時点で、元のダッシュボードへ戻って `dashboard-updater` で done にする'
 check '途中の更新は待たずに次の手順へ進む' rules_have '途中の更新はバックグラウンドで呼び、完了を待たずに次の手順へ進む'
 check '用意は完了を待つ' rules_have '用意（setup）は返ってくるパスが必要なので、完了を待つ'
 check '同じダッシュボードを同時に更新させない' rules_have '同じダッシュボードを同時に更新させない'
